@@ -1,0 +1,16 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Claude Code local settings (never commit - contains paths/permissions)
+.claude/settings.local.json
+
+# Agent memory (project-specific, not template)
+.claude/agent-memory/
