@@ -651,6 +651,11 @@ Custom slash commands available in this project:
 | `/create-pr` | Create PR with structured description | `.claude/skills/create-pr/SKILL.md` |
 | `/create-ticket` | Create a tracked ticket for task management | `.claude/skills/create-ticket/SKILL.md` |
 | `/create-skill` | Generate a new skill from a description | `.claude/skills/create-skill/SKILL.md` |
+| `/linear-sync` | Sync Linear issues with local ticket system | `.claude/skills/linear-sync/SKILL.md` |
+| `/linear-create` | Create a new issue in Linear | `.claude/skills/linear-create/SKILL.md` |
+| `/linear-triage` | Triage and prioritize Linear inbox | `.claude/skills/linear-triage/SKILL.md` |
+| `/linear-sprint` | Manage Linear cycles and sprint planning | `.claude/skills/linear-sprint/SKILL.md` |
+| `/linear-update` | Update Linear issue status/assignee/labels | `.claude/skills/linear-update/SKILL.md` |
 
 <!-- Add project-specific skills as needed. Use /create-skill to generate
      new skills following the framework's conventions. Skills save context by
@@ -680,6 +685,7 @@ Rules files in `.claude/rules/` are auto-loaded every session:
 | `file-size-limits.md` | `src/**`, `tests/**` | Size limits and splitting strategies |
 | `testing-protocol.md` | `src/**`, `tests/**` | Test mapping, bug handling |
 | `feedback-loop.md` | All files | Post-session review, living docs |
+| `linear-workflow.md` | All files | Linear integration rules, status mapping, issue-driven development |
 
 <!-- Rules files supplement CLAUDE.md. They're loaded automatically and
      can be path-scoped so they only apply to relevant files. -->
@@ -694,6 +700,7 @@ Custom subagents for specialized tasks:
 | `planner` | Opus | Project | Before multi-step features, refactors, or architecture changes |
 | `qa-tester` | Sonnet | Project | Writing tests, validating coverage, investigating failures |
 | `[domain]-expert` | Opus | Project | After 2 failed fix attempts on [domain] issues |
+| `linear-pm` | Opus | Project | Sprint planning, backlog grooming, project health, release readiness |
 
 Agent memory persists in `.claude/agent-memory/[agent-name]/MEMORY.md` and is automatically included in the agent's context on each invocation.
 
@@ -807,7 +814,12 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── commit/SKILL.md             # /commit command
 │   │   ├── create-pr/SKILL.md          # /create-pr command
 │   │   ├── create-ticket/SKILL.md      # /create-ticket command
-│   │   └── create-skill/SKILL.md       # /create-skill meta-command
+│   │   ├── create-skill/SKILL.md       # /create-skill meta-command
+│   │   ├── linear-sync/SKILL.md       # /linear-sync command
+│   │   ├── linear-create/SKILL.md     # /linear-create command
+│   │   ├── linear-triage/SKILL.md     # /linear-triage command
+│   │   ├── linear-sprint/SKILL.md     # /linear-sprint command
+│   │   └── linear-update/SKILL.md     # /linear-update command
 │   ├── hooks/
 │   │   ├── check-file-size.sh          # PostToolUse: size limit check
 │   │   ├── check-scope.sh              # PreToolUse: scope warning
@@ -818,12 +830,14 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── scope-guardrails.md         # Change scope limits
 │   │   ├── file-size-limits.md         # Size limits (path-scoped)
 │   │   ├── testing-protocol.md         # Test mapping (path-scoped)
-│   │   └── feedback-loop.md            # Post-session review
+│   │   ├── feedback-loop.md            # Post-session review
+│   │   └── linear-workflow.md         # Linear integration rules
 │   ├── agents/
 │   │   ├── code-reviewer.md            # Pre-commit review (Haiku)
 │   │   ├── planner.md                  # Task planning (Opus)
 │   │   ├── qa-tester.md                # Test writing and QA (Sonnet)
-│   │   └── [domain]-expert.md          # Domain specialist (Opus)
+│   │   ├── [domain]-expert.md          # Domain specialist (Opus)
+│   │   └── linear-pm.md               # Linear product management (Opus)
 │   └── tickets/
 │       ├── README.md                   # Ticket system guide
 │       ├── ticket-list.md              # Centralized index
