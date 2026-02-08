@@ -6,11 +6,13 @@ A battle-tested project framework for Claude Code that enforces engineering disc
 
 A complete set of templates for configuring Claude Code as a **rigorous engineering partner** rather than a compliant assistant. Includes:
 
-- **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules
-- **Skills** — Slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`)
+- **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
+- **Skills** — 9 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`)
 - **Hooks** — Automated enforcement (file size limits, scope warnings, rule persistence through context compression)
 - **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops)
-- **Agents** — Specialized subagents with persistent memory (code reviewer, domain expert)
+- **Agents** — 4 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert)
+- **Ticket system** — Persistent task tracking across sessions with structured templates
+- **Setup tooling** — Automated setup script, comment stripping for production, `.claudeignore` template
 - **Companion docs** — KNOWN_ISSUES.md, CURRENT_SPRINT.md templates
 
 ## Why This Exists
@@ -35,11 +37,17 @@ These patterns were developed during a real production project (a financial trad
 # Clone this repo
 git clone https://github.com/opmau/claude-code-framework.git
 
-# Copy templates into your project
+# Option A: Automated setup (recommended)
+bash claude-code-framework/bin/setup.sh /path/to/your-project
+
+# Option B: Manual copy
 cp -r claude-code-framework/templates/.claude your-project/.claude
 cp claude-code-framework/templates/CLAUDE.md your-project/CLAUDE.md
+cp claude-code-framework/templates/.claudeignore your-project/.claudeignore
 cp -r claude-code-framework/templates/docs your-project/docs
 ```
+
+**Prerequisites (for hooks):** bash 4+, `jq`. On Windows, use Git Bash or WSL. See [Platform Notes](PROJECT_SETUP.md#platform-notes).
 
 ### 2. Bootstrap with Claude Code
 
@@ -69,23 +77,33 @@ Read CLAUDE.md and answer:
 3. If your second fix attempt failed, what would you do?
 ```
 
-See [PROJECT_SETUP.md](PROJECT_SETUP.md) for the full 10-step setup guide.
+See [PROJECT_SETUP.md](PROJECT_SETUP.md) for the full 11-step setup guide.
 
 ## What's Included
 
 ```
+bin/
+├── setup.sh                            # Automated project setup script
+└── strip-comments.sh                   # Strip coaching comments for production
+
 templates/
 ├── CLAUDE.md                           # Main agent rules template
+├── .claudeignore                       # Files Claude should skip
 ├── docs/
 │   ├── KNOWN_ISSUES.md                 # Bug tracking template
 │   └── CURRENT_SPRINT.md               # Sprint state template
 └── .claude/
+    ├── settings.local.json             # Hook registration (pre-configured)
     ├── skills/
     │   ├── build/SKILL.md              # /build — compile and report
     │   ├── test/SKILL.md               # /test — run tests, parse results
     │   ├── review/SKILL.md             # /review — pre-commit code review
     │   ├── check-sizes/SKILL.md        # /check-sizes — audit file sizes
-    │   └── retro/SKILL.md              # /retro — session retrospective
+    │   ├── retro/SKILL.md              # /retro — session retrospective
+    │   ├── commit/SKILL.md             # /commit — conventional commit generation
+    │   ├── create-pr/SKILL.md          # /create-pr — structured PR creation
+    │   ├── create-ticket/SKILL.md      # /create-ticket — task tracking
+    │   └── create-skill/SKILL.md       # /create-skill — generate new skills
     ├── hooks/
     │   ├── check-file-size.sh          # Warns when files exceed size limits
     │   ├── check-scope.sh              # Warns when editing out-of-scope files
@@ -97,9 +115,15 @@ templates/
     │   ├── file-size-limits.md         # Size limits (path-scoped to src/)
     │   ├── testing-protocol.md         # Test mapping, bug handling
     │   └── feedback-loop.md            # Post-session review triggers
-    └── agents/
-        ├── code-reviewer.md            # Pre-commit reviewer with memory
-        └── domain-expert.md            # Domain specialist with memory
+    ├── agents/
+    │   ├── code-reviewer.md            # Pre-commit reviewer with memory
+    │   ├── planner.md                  # Task planning and breakdown
+    │   ├── qa-tester.md                # Test writing and QA
+    │   └── domain-expert.md            # Domain specialist with memory
+    └── tickets/
+        ├── README.md                   # Ticket system guide
+        ├── ticket-list.md              # Centralized task index
+        └── TICKET-000-template.md      # Ticket template
 ```
 
 ## Key Features
@@ -122,6 +146,24 @@ Rules aren't just documented — they're enforced automatically:
 - **PreCompact** hook re-injects critical rules before context compression
 - **Stop** hook periodically reminds about documentation updates
 
+### Git Workflow Skills
+
+Built-in slash commands for clean git workflows:
+
+- `/commit` — generates conventional commit messages from staged changes
+- `/create-pr` — creates PRs with structured summary, changes list, and test plan
+- `/create-ticket` — tracks tasks persistently across sessions
+- `/create-skill` — meta-skill to generate new custom skills
+
+### Specialized Agents
+
+Four agents with persistent memory for different roles:
+
+- **code-reviewer** — pre-commit review against CLAUDE.md rules (Haiku, fast)
+- **planner** — breaks down complex tasks before implementation (Sonnet)
+- **qa-tester** — writes tests, validates coverage, investigates failures (Sonnet)
+- **domain-expert** — deep expertise for domain-specific debugging (Opus)
+
 ### Feedback Loop
 
 The framework builds continuous improvement into every session:
@@ -129,7 +171,7 @@ The framework builds continuous improvement into every session:
 - Post-session retrospectives via `/retro`
 - Living documentation rules (Claude proposes updates to CLAUDE.md)
 - Retrospective triggers for bugs, failed fixes, and incidents
-- Agent memory persistence (code reviewer learns over time)
+- Agent memory persistence (all agents learn over time)
 
 ### File Size Limits as Agent Performance
 
@@ -166,6 +208,17 @@ Never remove:
 - **Agent Behavior Rules** — these prevent the most common AI failures
 - **Feedback Loop** — this is how the system improves
 - **Scope Guardrails** — this prevents Claude from making sweeping changes
+
+### Context Window Optimization
+
+Reduce CLAUDE.md from ~850 lines to ~400 lines after setup:
+
+```bash
+bash bin/strip-comments.sh CLAUDE.md --dry-run  # preview
+bash bin/strip-comments.sh CLAUDE.md             # strip
+```
+
+Plus `.claudeignore` prevents Claude from reading build artifacts, dependencies, and binary files.
 
 ## Contributing
 

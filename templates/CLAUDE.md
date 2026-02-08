@@ -1,7 +1,19 @@
 # CLAUDE.md — [Project Name]
 
 <!-- Last updated: YYYY-MM-DD -->
-<!-- Template version: 1.0 -->
+<!-- Template version: 2.0 -->
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     AUTO-GENERATED SECTION MARKERS
+
+     Some sections below use markers like:
+       <!-- auto-generated-start:SECTION_NAME -->
+       <!-- auto-generated-end:SECTION_NAME -->
+
+     These markers enable the /retro and /create-ticket skills to
+     programmatically update specific sections without disturbing the rest
+     of the file. Do NOT remove or rename these markers.
+     ═══════════════════════════════════════════════════════════════════════ -->
 
 This file provides **mandatory rules** for Claude Code when working on [Project Name].
 
@@ -83,18 +95,22 @@ Every rule in this file was added because of a **real failure**:
 
 ## Project Overview
 
+<!-- auto-generated-start:overview -->
 - **What:** [One sentence — e.g., "Broker plugin connecting Zorro to Hyperliquid exchange"]
 - **Language:** [e.g., C++14, TypeScript, Python 3.11]
 - **Build system:** [e.g., CMake + MSVC 2022, npm, cargo]
 - **Key dependencies:** [e.g., secp256k1, WinHTTP, React 18]
 - **Entry point:** [e.g., `src/api/hl_broker.cpp`, `src/index.ts`]
+<!-- auto-generated-end:overview -->
 
+<!-- auto-generated-start:commands -->
 | Action | Command |
 |--------|---------|
 | Build | `[your build command]` |
 | Test (all) | `[your test-all command]` |
 | Test (quick) | `[your fast-test command]` |
 | Lint | `[your lint command]` |
+<!-- auto-generated-end:commands -->
 
 **Related docs:**
 - `docs/CURRENT_SPRINT.md` — Active work, phase checklists, current branch
@@ -524,6 +540,7 @@ docs: update <document>
 
      Use this consistent template for each gotcha: -->
 
+<!-- auto-generated-start:gotchas -->
 ### [Pattern / Gotcha Name]
 
 - **Context:** [When does this matter?]
@@ -542,6 +559,7 @@ docs: update <document>
      ### Common Mistake Patterns
      ### API Idiosyncrasies
 -->
+<!-- auto-generated-end:gotchas -->
 
 ---
 
@@ -629,8 +647,13 @@ Custom slash commands available in this project:
 | `/review` | Pre-commit code review against CLAUDE.md | `.claude/skills/review/SKILL.md` |
 | `/check-sizes` | Audit all source files against size limits | `.claude/skills/check-sizes/SKILL.md` |
 | `/retro` | Post-session retrospective and doc updates | `.claude/skills/retro/SKILL.md` |
+| `/commit` | Generate conventional commit from staged changes | `.claude/skills/commit/SKILL.md` |
+| `/create-pr` | Create PR with structured description | `.claude/skills/create-pr/SKILL.md` |
+| `/create-ticket` | Create a tracked ticket for task management | `.claude/skills/create-ticket/SKILL.md` |
+| `/create-skill` | Generate a new skill from a description | `.claude/skills/create-skill/SKILL.md` |
 
-<!-- Add project-specific skills as needed. Skills save context by
+<!-- Add project-specific skills as needed. Use /create-skill to generate
+     new skills following the framework's conventions. Skills save context by
      encapsulating repetitive workflows into one-keystroke commands. -->
 
 ### Hooks (Automated Enforcement)
@@ -668,9 +691,20 @@ Custom subagents for specialized tasks:
 | Agent | Model | Memory | When to Use |
 |-------|-------|--------|-------------|
 | `code-reviewer` | Haiku | Project | Before commits — reviews against CLAUDE.md |
+| `planner` | Sonnet | Project | Before multi-step features, refactors, or architecture changes |
+| `qa-tester` | Sonnet | Project | Writing tests, validating coverage, investigating failures |
 | `[domain]-expert` | Opus | Project | After 2 failed fix attempts on [domain] issues |
 
 Agent memory persists in `.claude/agent-memory/[agent-name]/MEMORY.md` and is automatically included in the agent's context on each invocation.
+
+### Ticket System
+
+Task tracking that persists across sessions. See `.claude/tickets/README.md` for full details.
+
+- **Index:** `.claude/tickets/ticket-list.md`
+- **Template:** `.claude/tickets/TICKET-000-template.md`
+- **Create new:** Use `/create-ticket` or manually copy the template
+- **Statuses:** 🔴 Todo → 🟡 In Progress → 🟢 Done (also 🔵 Blocked, ⚫ Cancelled)
 
 ---
 
@@ -759,6 +793,7 @@ Use these phrases when you WANT Claude to challenge you:
 ```
 [ProjectName]/
 ├── CLAUDE.md                           # Agent rules (permanent)
+├── .claudeignore                       # Files Claude should skip
 ├── [build config file]                 # Build configuration
 ├── .claude/
 │   ├── settings.json                   # Hooks config (committed)
@@ -768,7 +803,11 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── test/SKILL.md               # /test command
 │   │   ├── review/SKILL.md             # /review command
 │   │   ├── check-sizes/SKILL.md        # /check-sizes command
-│   │   └── retro/SKILL.md              # /retro command
+│   │   ├── retro/SKILL.md              # /retro command
+│   │   ├── commit/SKILL.md             # /commit command
+│   │   ├── create-pr/SKILL.md          # /create-pr command
+│   │   ├── create-ticket/SKILL.md      # /create-ticket command
+│   │   └── create-skill/SKILL.md       # /create-skill meta-command
 │   ├── hooks/
 │   │   ├── check-file-size.sh          # PostToolUse: size limit check
 │   │   ├── check-scope.sh              # PreToolUse: scope warning
@@ -780,9 +819,15 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── file-size-limits.md         # Size limits (path-scoped)
 │   │   ├── testing-protocol.md         # Test mapping (path-scoped)
 │   │   └── feedback-loop.md            # Post-session review
-│   └── agents/
-│       ├── code-reviewer.md            # Pre-commit review (Haiku)
-│       └── [domain]-expert.md          # Domain specialist (Opus)
+│   ├── agents/
+│   │   ├── code-reviewer.md            # Pre-commit review (Haiku)
+│   │   ├── planner.md                  # Task planning (Sonnet)
+│   │   ├── qa-tester.md                # Test writing and QA (Sonnet)
+│   │   └── [domain]-expert.md          # Domain specialist (Opus)
+│   └── tickets/
+│       ├── README.md                   # Ticket system guide
+│       ├── ticket-list.md              # Centralized index
+│       └── TICKET-000-template.md      # Ticket template
 ├── docs/
 │   ├── CURRENT_SPRINT.md               # Active work status (ephemeral)
 │   ├── KNOWN_ISSUES.md                 # Bugs to fix
@@ -822,4 +867,5 @@ Use these phrases when you WANT Claude to challenge you:
 | Active hooks | [Claude Code Capabilities → Hooks](#hooks-automated-enforcement) |
 | Modular rules | [Claude Code Capabilities → Rules](#modular-rules) |
 | Agents & memory | [Claude Code Capabilities → Agents](#agents) |
+| Ticket tracking | [Claude Code Capabilities → Ticket System](#ticket-system) |
 | Steering phrases | [User Prompts for Steering Claude](#user-prompts-for-steering-claude) |

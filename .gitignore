@@ -10,7 +10,9 @@ Thumbs.db
 .idea/
 
 # Claude Code local settings (never commit - contains paths/permissions)
+# Exception: templates/.claude/settings.local.json is a template, not actual local settings
 .claude/settings.local.json
+!templates/.claude/settings.local.json
 
 # Agent memory (project-specific, not template)
 .claude/agent-memory/

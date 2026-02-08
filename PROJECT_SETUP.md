@@ -9,10 +9,12 @@ How to bootstrap a new project with Claude Code using the CLAUDE.md template sys
 This guide ensures every new project starts with:
 - A properly customized `CLAUDE.md` (not rewritten from scratch)
 - Companion docs (`KNOWN_ISSUES.md`, `CURRENT_SPRINT.md`)
-- Skills (slash commands) for common workflows
+- Skills (slash commands) for common workflows (`/build`, `/test`, `/review`, `/commit`, `/create-pr`, etc.)
 - Hooks for automated rule enforcement
 - Modular rules for path-scoped constraints
-- Agents with persistent memory for specialized tasks
+- Agents with persistent memory (code-reviewer, planner, qa-tester, domain-expert)
+- Ticket system for persistent task tracking across sessions
+- `.claudeignore` for context window optimization
 - Claude Code that understands and respects the framework
 
 **The key principle:** Claude should POPULATE the template, not REDESIGN it.
@@ -21,67 +23,29 @@ This guide ensures every new project starts with:
 
 ## Step 1: Copy Template Files
 
-Copy all template files into your new project:
+### Option A: Automated Setup (Recommended)
 
-```
-your-new-project/
-├── CLAUDE.md                         ← copy from CLAUDE_TEMPLATE.md
-├── docs/
-│   ├── KNOWN_ISSUES.md               ← copy from KNOWN_ISSUES_TEMPLATE.md
-│   └── CURRENT_SPRINT.md             ← copy from CURRENT_SPRINT_TEMPLATE.md
-├── .claude/
-│   ├── settings.json                 ← create (or add hooks to existing)
-│   ├── skills/
-│   │   ├── build/SKILL.md            ← copy from templates/skills/build/
-│   │   ├── test/SKILL.md             ← copy from templates/skills/test/
-│   │   ├── review/SKILL.md           ← copy from templates/skills/review/
-│   │   ├── check-sizes/SKILL.md      ← copy from templates/skills/check-sizes/
-│   │   └── retro/SKILL.md            ← copy from templates/skills/retro/
-│   ├── hooks/
-│   │   ├── check-file-size.sh        ← copy from templates/hooks/
-│   │   ├── check-scope.sh            ← copy from templates/hooks/
-│   │   ├── inject-critical-rules.sh  ← copy from templates/hooks/
-│   │   └── session-check.sh          ← copy from templates/hooks/
-│   ├── rules/
-│   │   ├── agent-behavior.md         ← copy from templates/rules/
-│   │   ├── scope-guardrails.md       ← copy from templates/rules/
-│   │   ├── file-size-limits.md       ← copy from templates/rules/
-│   │   ├── testing-protocol.md       ← copy from templates/rules/
-│   │   └── feedback-loop.md          ← copy from templates/rules/
-│   └── agents/
-│       ├── code-reviewer.md          ← copy from templates/agents/
-│       └── [domain]-expert.md        ← copy from templates/agents/domain-expert.md
-```
+Run the setup script from the framework root:
 
-**Quick copy script (bash):**
 ```bash
-# From the template project root, targeting your new project
-TEMPLATE_DIR="path/to/docs/templates"
-NEW_PROJECT="path/to/your-new-project"
-
-# Core docs
-cp "$TEMPLATE_DIR/CLAUDE_TEMPLATE.md" "$NEW_PROJECT/CLAUDE.md"
-mkdir -p "$NEW_PROJECT/docs"
-cp "$TEMPLATE_DIR/KNOWN_ISSUES_TEMPLATE.md" "$NEW_PROJECT/docs/KNOWN_ISSUES.md"
-cp "$TEMPLATE_DIR/CURRENT_SPRINT_TEMPLATE.md" "$NEW_PROJECT/docs/CURRENT_SPRINT.md"
-
-# Skills
-mkdir -p "$NEW_PROJECT/.claude/skills"
-cp -r "$TEMPLATE_DIR/skills/"* "$NEW_PROJECT/.claude/skills/"
-
-# Hooks
-mkdir -p "$NEW_PROJECT/.claude/hooks"
-cp "$TEMPLATE_DIR/hooks/"*.sh "$NEW_PROJECT/.claude/hooks/"
-chmod +x "$NEW_PROJECT/.claude/hooks/"*.sh
-
-# Rules
-mkdir -p "$NEW_PROJECT/.claude/rules"
-cp "$TEMPLATE_DIR/rules/"*.md "$NEW_PROJECT/.claude/rules/"
-
-# Agents
-mkdir -p "$NEW_PROJECT/.claude/agents"
-cp "$TEMPLATE_DIR/agents/"*.md "$NEW_PROJECT/.claude/agents/"
+bash bin/setup.sh /path/to/your-new-project
 ```
+
+Options:
+- `--dry-run` — preview what would be copied
+- `--force` — overwrite existing files
+- `--no-hooks` — skip hooks
+- `--no-agents` — skip agents
+- `--no-skills` — skip skills
+- `--no-rules` — skip rules
+- `--no-tickets` — skip ticket system
+- `--no-docs` — skip companion docs
+
+**Prerequisites (for hooks):** bash 4+, `jq`. On Windows, use Git Bash or WSL.
+
+### Option B: Manual Copy
+
+See the full file listing in the [README](README.md#whats-included).
 
 ---
 
@@ -196,6 +160,10 @@ Read each SKILL.md in .claude/skills/ and update:
 3. review/SKILL.md — no changes needed (uses generic CLAUDE.md rules)
 4. check-sizes/SKILL.md — no changes needed (reads limits from CLAUDE.md)
 5. retro/SKILL.md — no changes needed (reads rules from CLAUDE.md)
+6. commit/SKILL.md — no changes needed (generates conventional commits)
+7. create-pr/SKILL.md — no changes needed (reads branch strategy from CLAUDE.md)
+8. create-ticket/SKILL.md — no changes needed (uses ticket templates)
+9. create-skill/SKILL.md — no changes needed (meta-skill for creating new skills)
 
 Show me the changes before writing.
 ```
@@ -206,18 +174,18 @@ Verify skills work by typing `/build` and `/test` in Claude Code.
 
 ## Step 6: Configure Hooks
 
-Add hook configuration to `.claude/settings.local.json`:
+The setup script (or manual copy) already installs `.claude/settings.local.json` with hooks pre-registered. Just customize the scripts:
 
 ```
-Read docs/templates/hooks/HOOKS_TEMPLATE.jsonc and add the hooks
-configuration to our .claude/settings.local.json.
+Read .claude/hooks/ and customize:
 
-Replace [PROJECT_ROOT] with the actual path to this project.
-Adjust the ALLOWED_DIRS in check-scope.sh to match our directory structure.
-Adjust the limits in check-file-size.sh to match our language
-(use the calibration table in CLAUDE.md).
+1. check-scope.sh — update ALLOWED_DIRS for our project structure
+2. check-file-size.sh — update HEADER_LIMIT, IMPL_LIMIT, TOTAL_LIMIT
+   for our language (use the calibration table in CLAUDE.md)
+3. inject-critical-rules.sh — review the critical rules list
+4. session-check.sh — no changes needed
 
-Make the hook scripts executable.
+Make the hook scripts executable: chmod +x .claude/hooks/*.sh
 Show me the changes before writing.
 ```
 
@@ -232,16 +200,15 @@ Show me the changes before writing.
 Customize the agents for your domain:
 
 ```
-Read .claude/agents/code-reviewer.md and customize:
-1. Replace [Project Name] with our project name
-2. Update the review checklist for our specific patterns
-3. Keep the memory: project setting — this lets the reviewer learn over time
+Read .claude/agents/ and customize:
 
-Read .claude/agents/domain-expert.md and customize:
-1. Rename to [your-domain]-expert.md
-2. Fill in the domain-specific topics it should cover
-3. Add key reference material (API endpoints, error codes, etc.)
-4. Keep the memory: project setting
+1. code-reviewer.md — Replace [Project Name], update review checklist
+2. planner.md — Replace [Project Name]
+3. qa-tester.md — Replace [Project Name], update test conventions
+4. domain-expert.md — Rename to [your-domain]-expert.md, fill in
+   domain-specific topics and reference material
+
+Keep the memory: project setting on all agents — this lets them learn over time.
 
 Show me the changes before writing.
 ```
@@ -284,11 +251,13 @@ Read CLAUDE.md, .claude/rules/, and .claude/skills/ and answer:
 6. If your second fix attempt failed, what would you do?
 7. What slash commands are available and what do they do?
 8. What hooks are active and what do they enforce?
+9. How do you create a ticket for tracking work?
+10. What agents are available and when should each be used?
 
 Answers should come from project config, not general knowledge.
 ```
 
-If Claude can't answer all 8, the setup is incomplete.
+If Claude can't answer all 10, the setup is incomplete.
 
 ---
 
@@ -307,6 +276,25 @@ Before we start coding, let's establish baselines:
 
 Then we'll start on: [your first task]
 ```
+
+---
+
+## Step 11: Strip Coaching Comments (Optional)
+
+After setup is complete and you're comfortable with the template, strip the
+HTML coaching comments to reduce CLAUDE.md size for production use:
+
+```bash
+# Preview what would be removed
+bash bin/strip-comments.sh CLAUDE.md --dry-run
+
+# Strip comments (typically ~850 lines → ~400 lines)
+bash bin/strip-comments.sh CLAUDE.md
+```
+
+This preserves all rules, auto-generated markers, and template metadata while
+removing the setup-phase coaching comments. The savings are significant — fewer
+tokens loaded per session means more context window for reasoning.
 
 ---
 
@@ -370,8 +358,40 @@ Update the master templates in `docs/templates/` based on these patterns.
 
 The template has a version comment at the top:
 ```
-<!-- Template version: 1.0 -->
+<!-- Template version: 2.0 -->
 ```
 
 Bump this when you make significant changes. This helps you track
 which projects are using which version of the framework.
+
+---
+
+## Platform Notes
+
+### Windows
+
+The hooks require bash and `jq`. On Windows, you have two options:
+
+1. **Git Bash (recommended):** Installed with Git for Windows. Hooks work as-is.
+2. **WSL:** Run Claude Code from a WSL terminal.
+
+Install `jq`:
+- Git Bash: download `jq.exe` from https://jqlang.github.io/jq/download/ and add to PATH
+- WSL: `sudo apt install jq`
+
+### macOS
+
+```bash
+# Install jq if not present
+brew install jq
+```
+
+### Linux
+
+```bash
+# Debian/Ubuntu
+sudo apt install jq
+
+# Fedora
+sudo dnf install jq
+```
