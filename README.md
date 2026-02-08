@@ -160,7 +160,7 @@ Built-in slash commands for clean git workflows:
 Four agents with persistent memory for different roles:
 
 - **code-reviewer** — pre-commit review against CLAUDE.md rules (Haiku, fast)
-- **planner** — breaks down complex tasks before implementation (Sonnet)
+- **planner** — breaks down complex tasks before implementation (Opus)
 - **qa-tester** — writes tests, validates coverage, investigates failures (Sonnet)
 - **domain-expert** — deep expertise for domain-specific debugging (Opus)
 

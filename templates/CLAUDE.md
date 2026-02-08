@@ -691,7 +691,7 @@ Custom subagents for specialized tasks:
 | Agent | Model | Memory | When to Use |
 |-------|-------|--------|-------------|
 | `code-reviewer` | Haiku | Project | Before commits — reviews against CLAUDE.md |
-| `planner` | Sonnet | Project | Before multi-step features, refactors, or architecture changes |
+| `planner` | Opus | Project | Before multi-step features, refactors, or architecture changes |
 | `qa-tester` | Sonnet | Project | Writing tests, validating coverage, investigating failures |
 | `[domain]-expert` | Opus | Project | After 2 failed fix attempts on [domain] issues |
 
@@ -821,7 +821,7 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   └── feedback-loop.md            # Post-session review
 │   ├── agents/
 │   │   ├── code-reviewer.md            # Pre-commit review (Haiku)
-│   │   ├── planner.md                  # Task planning (Sonnet)
+│   │   ├── planner.md                  # Task planning (Opus)
 │   │   ├── qa-tester.md                # Test writing and QA (Sonnet)
 │   │   └── [domain]-expert.md          # Domain specialist (Opus)
 │   └── tickets/

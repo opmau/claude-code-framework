@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Strategic planning agent for breaking down complex tasks. Use before starting multi-step features, refactors, or architecture changes.
-model: sonnet
+model: opus
 memory: project
 ---
 
