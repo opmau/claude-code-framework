@@ -1,6 +1,6 @@
 # Claude Code Project Framework
 
-A battle-tested project framework for Claude Code that enforces engineering discipline, prevents common AI agent failure modes, and builds continuous improvement into your workflow.
+A project framework for Claude Code that enforces engineering discipline, prevents common AI agent failure modes, and builds continuous improvement into your workflow.
 
 ## What This Is
 
