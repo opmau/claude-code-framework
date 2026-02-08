@@ -7,8 +7,8 @@ A project framework for Claude Code that enforces engineering discipline, preven
 A complete set of templates for configuring Claude Code as a **rigorous engineering partner** rather than a compliant assistant. Includes:
 
 - **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
-- **Skills** — 9 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`)
-- **Hooks** — Automated enforcement (file size limits, scope warnings, rule persistence through context compression)
+- **Skills** — 13 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`)
+- **Hooks** — 5 automated enforcement hooks (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
 - **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops)
 - **Agents** — 4 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert)
 - **Ticket system** — Persistent task tracking across sessions with structured templates
@@ -28,6 +28,9 @@ These patterns were developed during a real production project (a financial trad
 | Scope guardrails | Asked to fix 1 bug, Claude refactored 8 files and broke 3 things |
 | Feedback loop | Same gotcha was rediscovered 4 times across sessions |
 | PreCompact hook | Critical rules were lost during context compression, Claude "forgot" constraints |
+| Diagnosis rules | Speculative fix ignored log evidence, causing financial damage |
+| Session modes | Constraint stated once was forgotten mid-session, causing scope violations |
+| Pre-commit hook | Code committed without build/test verification, deploying broken artifacts |
 
 ## Quick Start
 
@@ -103,10 +106,15 @@ templates/
     │   ├── commit/SKILL.md             # /commit — conventional commit generation
     │   ├── create-pr/SKILL.md          # /create-pr — structured PR creation
     │   ├── create-ticket/SKILL.md      # /create-ticket — task tracking
-    │   └── create-skill/SKILL.md       # /create-skill — generate new skills
+    │   ├── create-skill/SKILL.md       # /create-skill — generate new skills
+    │   ├── document-bug/SKILL.md       # /document-bug — log bugs without fixing
+    │   ├── session-mode/SKILL.md       # /session-mode — set session constraints
+    │   ├── diagnose/SKILL.md           # /diagnose — structured bug investigation
+    │   └── fix-issue/SKILL.md          # /fix-issue — fix tracked known issues
     ├── hooks/
     │   ├── check-file-size.sh          # Warns when files exceed size limits
-    │   ├── check-scope.sh              # Warns when editing out-of-scope files
+    │   ├── check-scope.sh              # Warns when editing out-of-scope files + session mode
+    │   ├── pre-commit-check.sh         # Warns when committing without build/test
     │   ├── inject-critical-rules.sh    # Preserves rules through context compression
     │   └── session-check.sh            # Periodic feedback loop reminder
     ├── rules/
@@ -136,14 +144,35 @@ Claude's default is to agree with users. In engineering, this creates blind spot
 - Propose better alternatives even when not asked
 - Never agree just to be agreeable
 - Re-check evidence when challenged instead of immediately conceding
+- Follow user-provided log evidence before proposing its own theories
+- Test multiple hypotheses before concluding on a root cause
+
+### Session Modes
+
+Lock sessions into specific operating modes to prevent drift:
+
+- `/session-mode document-only` — audit and document, no source changes
+- `/session-mode debug` — focused bug fixing, no refactoring
+- `/session-mode refactor` — restructure code, document bugs found but don't fix them
+- `/session-mode feature` — build new functionality with a plan
+- `/session-mode review` — read-only code assessment
+
+### Structured Bug Workflow
+
+Complete lifecycle from discovery to fix:
+
+- `/document-bug` — log bugs without touching source code (enforces "document, don't fix")
+- `/diagnose` — structured differential diagnosis with multiple hypotheses
+- `/fix-issue` — pick a tracked bug from KNOWN_ISSUES, fix it, verify, update docs
 
 ### Automated Enforcement via Hooks
 
 Rules aren't just documented — they're enforced automatically:
 
 - **PostToolUse** hook checks file size after every edit
-- **PreToolUse** hook warns about out-of-scope changes
-- **PreCompact** hook re-injects critical rules before context compression
+- **PreToolUse** hook warns about out-of-scope changes and enforces session mode constraints
+- **PreToolUse** hook warns when committing without running build/tests
+- **PreCompact** hook re-injects critical rules (including diagnosis rules) before context compression
 - **Stop** hook periodically reminds about documentation updates
 
 ### Git Workflow Skills

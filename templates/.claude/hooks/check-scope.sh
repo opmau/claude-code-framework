@@ -16,10 +16,28 @@ if [ -z "$FILE_PATH" ]; then
 fi
 
 # --- CUSTOMIZE THESE FOR YOUR PROJECT ---
-# Directories where edits are expected
-ALLOWED_DIRS="src/ tests/ docs/"
+# Directories where edits are expected.
+# DEFAULT: restrictive — only src, tests, docs, and .claude config.
+# Add more directories as needed for your project.
+ALLOWED_DIRS="src/ tests/ docs/ .claude/"
 # Files that are always OK to edit
 ALLOWED_FILES="CLAUDE.md docs/KNOWN_ISSUES.md docs/CURRENT_SPRINT.md"
+# ----------------------------------------
+
+# --- SESSION MODE ENFORCEMENT ---
+# If a session mode is active in CURRENT_SPRINT.md, enforce stricter constraints
+if [ -f "docs/CURRENT_SPRINT.md" ]; then
+  SESSION_MODE=$(grep -A1 "Active Session Mode" docs/CURRENT_SPRINT.md 2>/dev/null | grep "Mode:" | sed 's/.*Mode:[[:space:]]*//' | tr -d '[:space:]')
+  case "$SESSION_MODE" in
+    document-only|review)
+      # In document-only or review mode, only docs and .claude are allowed
+      ALLOWED_DIRS="docs/ .claude/"
+      ;;
+    debug)
+      # In debug mode, keep defaults but add extra warning
+      ;;
+  esac
+fi
 # ----------------------------------------
 
 # Check if file is in an allowed directory
