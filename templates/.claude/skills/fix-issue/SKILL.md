@@ -25,12 +25,12 @@ Select a bug from Linear, fix it in a focused session, verify the fix, and updat
      ```
    - If `$ARGUMENTS` is a description, search for matching bug issues:
      ```bash
-     linear issue list --label "bug" --json
+     linear issue list --label "bug"
      ```
      Then match by title/description.
    - If no arguments, list all open bugs and ask the user to pick one:
      ```bash
-     linear issue list --label "bug" --json
+     linear issue list --label "bug"
      ```
 
 3. **Review the issue details:**
