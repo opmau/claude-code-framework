@@ -88,6 +88,9 @@ Every rule in this file was added because of a **real failure**:
 | Scope guardrails | Asked to fix 1 bug, Claude refactored 8 files and broke 3 things |
 | Feedback loop | Same gotcha was rediscovered 4 times across sessions |
 | Document, don't fix | Bug fix during refactor caused untraceable regression |
+| Diagnosis rules | Speculative fix (timeout increase) ignored log evidence, causing financial damage |
+| Session modes | Constraint stated once was forgotten mid-session, leading to scope violations |
+| Pre-commit verification | Code committed without build/test, deployed broken artifacts |
 
 **If Claude suggests removing a rule, it should explain what replaces the protection that rule provides.**
 
@@ -433,6 +436,32 @@ If the **2nd** fix attempt fails:
 
 <!-- Adjust the attempt count per project. 2 is good for most. -->
 
+### Diagnosis Rules
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WHY THIS EXISTS:
+
+     The most common debugging failure is Claude proposing speculative fixes
+     without evidence. In production projects (especially trading), an
+     unfounded fix can cause financial damage. These rules enforce systematic
+     diagnosis before any fix is attempted.
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+When investigating a bug or failure:
+
+1. **Follow user evidence first** — if the user provides log evidence pointing to cause X, investigate X before proposing your own theory
+2. **No speculative fixes** — do not propose a fix until the root cause is confirmed with evidence
+3. **Quote evidence for every claim** — reference file:line, log output, or error messages
+4. **Test multiple hypotheses** — generate at least 2 possible causes and find confirming/disconfirming evidence for each
+5. **Distinguish THINK vs VERIFIED** — label what you believe vs what you've confirmed
+
+| | Example |
+|---|---------|
+| ❌ Bad | "The timeout is probably too short, let me increase it" |
+| ✅ Good | "The log shows 'connection refused' (not timeout). The endpoint isn't responding. Checking config..." |
+
+Use `/diagnose` for structured investigation of complex bugs.
+
 ### Debugging Protocol
 
 Before proposing ANY fix:
@@ -456,17 +485,19 @@ Before proposing ANY fix:
 When you encounter a bug during extraction or migration:
 
 1. **DO NOT FIX IT** in the same session
-2. **DOCUMENT IT** in `docs/KNOWN_ISSUES.md` using the template there
+2. **DOCUMENT IT** using `/document-bug` (or manually in `docs/KNOWN_ISSUES.md`)
 3. **CONTINUE** with extraction
-4. **FIX LATER** after the migration is complete
+4. **FIX LATER** after the migration is complete — use `/fix-issue` in a dedicated session
 
-**Rationale:** Mixing refactoring with bug fixes leads to untraceable changes and harder rollbacks.
+**Rationale:** Mixing refactoring with bug fixes leads to untraceable changes and harder rollbacks. Use `/session-mode refactor` to enforce this constraint automatically.
 
 ### During Normal Development
 
 1. If a bug **blocks** your current task → fix it, document the fix in the commit message
-2. If a bug is **unrelated** to your current task → document in `KNOWN_ISSUES.md`, finish current work first
+2. If a bug is **unrelated** to your current task → use `/document-bug` to log it, finish current work first
 3. If a test fails → document in `KNOWN_ISSUES.md`, do NOT attempt on-the-fly fixes (they often introduce new bugs)
+4. To investigate complex bugs → use `/diagnose` for structured differential diagnosis
+5. To fix a tracked bug → use `/fix-issue` to pick from KNOWN_ISSUES.md and fix in a focused session
 
 ---
 
@@ -651,6 +682,10 @@ Custom slash commands available in this project:
 | `/create-pr` | Create PR with structured description | `.claude/skills/create-pr/SKILL.md` |
 | `/create-ticket` | Create a tracked ticket for task management | `.claude/skills/create-ticket/SKILL.md` |
 | `/create-skill` | Generate a new skill from a description | `.claude/skills/create-skill/SKILL.md` |
+| `/document-bug` | Document a bug without modifying source files | `.claude/skills/document-bug/SKILL.md` |
+| `/session-mode` | Set session operating mode (debug/refactor/feature/document-only/review) | `.claude/skills/session-mode/SKILL.md` |
+| `/diagnose` | Structured differential diagnosis for complex bugs | `.claude/skills/diagnose/SKILL.md` |
+| `/fix-issue` | Pick a tracked bug from KNOWN_ISSUES, fix it, verify, update docs | `.claude/skills/fix-issue/SKILL.md` |
 | `/linear-sync` | Sync Linear issues with local ticket system | `.claude/skills/linear-sync/SKILL.md` |
 | `/linear-create` | Create a new issue in Linear | `.claude/skills/linear-create/SKILL.md` |
 | `/linear-triage` | Triage and prioritize Linear inbox | `.claude/skills/linear-triage/SKILL.md` |
@@ -668,7 +703,8 @@ These hooks enforce rules automatically — Claude doesn't need to remember them
 | Event | What It Does | Config |
 |-------|-------------|--------|
 | `PostToolUse` (Edit/Write) | Warns if file exceeds size limits | `.claude/hooks/check-file-size.sh` |
-| `PreToolUse` (Edit/Write) | Warns if editing out-of-scope files | `.claude/hooks/check-scope.sh` |
+| `PreToolUse` (Edit/Write) | Warns if editing out-of-scope files; enforces session mode constraints | `.claude/hooks/check-scope.sh` |
+| `PreToolUse` (Bash) | Warns if committing without running build/tests | `.claude/hooks/pre-commit-check.sh` |
 | `PreCompact` | Re-injects critical rules before context compression | `.claude/hooks/inject-critical-rules.sh` |
 | `Stop` | Periodic reminder to check for doc updates | `.claude/hooks/session-check.sh` |
 
@@ -680,7 +716,7 @@ Rules files in `.claude/rules/` are auto-loaded every session:
 
 | File | Scope | What It Covers |
 |------|-------|---------------|
-| `agent-behavior.md` | All files | Anti-sycophancy, evidence rule, max fix attempts |
+| `agent-behavior.md` | All files | Anti-sycophancy, evidence rule, diagnosis rules, max fix attempts |
 | `scope-guardrails.md` | All files | Single-responsibility, pre-change checklist |
 | `file-size-limits.md` | `src/**`, `tests/**` | Size limits and splitting strategies |
 | `testing-protocol.md` | `src/**`, `tests/**` | Test mapping, bug handling |
@@ -769,6 +805,12 @@ Use these phrases when you WANT Claude to challenge you:
 
 | Phrase | When to Use |
 |--------|-------------|
+| *"/session-mode document-only"* | Lock session to documentation only — no source edits |
+| *"/session-mode debug"* | Lock session to fixing a specific bug — no refactoring |
+| *"/session-mode refactor"* | Lock session to restructuring — document bugs, don't fix |
+| *"/diagnose [symptom]"* | Investigate before fixing — structured differential diagnosis |
+| *"/document-bug [description]"* | Log a bug without fixing it — enforces separation |
+| *"/fix-issue BUG-NNN"* | Pick a tracked bug and fix it in a focused session |
 | *"/clear"* | Reset context between modules during long refactors |
 | *"Summarize what we've done and what's left."* | Checkpoint before context fills up |
 | *"What should we update in CLAUDE.md based on today?"* | Trigger the feedback loop |
@@ -781,15 +823,29 @@ Use these phrases when you WANT Claude to challenge you:
 <!-- How Claude should approach each work session -->
 
 ```
-1. State context and task
-2. List files in scope (read before modifying)
-3. Create/modify files
-4. Verify build: [build command]
-5. Run relevant tests: [test command]
-6. Post-session: any CLAUDE.md or KNOWN_ISSUES updates needed?
-7. git commit (if requested)
-8. /clear to reset context (for long refactors)
+1. Set session mode: /session-mode [debug|refactor|feature|document-only|review]
+2. State context and task
+3. List files in scope (read before modifying)
+4. Create/modify files
+5. Verify build: [build command]  ← MANDATORY before commit
+6. Run relevant tests: [test command]  ← MANDATORY before commit
+7. Post-session: any CLAUDE.md or KNOWN_ISSUES updates needed?
+8. git commit (if requested) — only after steps 5+6 pass
+9. /clear to reset context (for long refactors)
 ```
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BUILD VERIFICATION NOTE:
+
+     NEVER commit without running build and tests first. The pre-commit-check
+     hook will warn you, but you should proactively run verification. If
+     build or tests fail, fix the issue before committing — don't commit
+     broken code "to save progress."
+
+     For projects with specific build requirements (e.g., 32-bit DLLs,
+     specific toolchains), document the exact verification commands and
+     expected outputs in the commands table at the top of this file.
+     ═══════════════════════════════════════════════════════════════════════ -->
 
 ---
 
@@ -815,6 +871,10 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── create-pr/SKILL.md          # /create-pr command
 │   │   ├── create-ticket/SKILL.md      # /create-ticket command
 │   │   ├── create-skill/SKILL.md       # /create-skill meta-command
+│   │   ├── document-bug/SKILL.md       # /document-bug command
+│   │   ├── session-mode/SKILL.md       # /session-mode command
+│   │   ├── diagnose/SKILL.md           # /diagnose command
+│   │   ├── fix-issue/SKILL.md          # /fix-issue command
 │   │   ├── linear-sync/SKILL.md       # /linear-sync command
 │   │   ├── linear-create/SKILL.md     # /linear-create command
 │   │   ├── linear-triage/SKILL.md     # /linear-triage command
@@ -822,7 +882,8 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   └── linear-update/SKILL.md     # /linear-update command
 │   ├── hooks/
 │   │   ├── check-file-size.sh          # PostToolUse: size limit check
-│   │   ├── check-scope.sh              # PreToolUse: scope warning
+│   │   ├── check-scope.sh              # PreToolUse: scope warning + session mode
+│   │   ├── pre-commit-check.sh         # PreToolUse: build/test verification
 │   │   ├── inject-critical-rules.sh    # PreCompact: rule survival
 │   │   └── session-check.sh            # Stop: feedback loop nudge
 │   ├── rules/
@@ -874,6 +935,8 @@ Use these phrases when you WANT Claude to challenge you:
 | Scope guardrails | [Scope of Change Guardrails](#scope-of-change-guardrails) |
 | Test mapping | [Testing Protocol](#testing-protocol) |
 | Pushback & rigor rules | [Agent Behavior Rules → Critical Thinking](#critical-thinking--constructive-pushback) |
+| Diagnosis discipline | [Agent Behavior Rules → Diagnosis Rules](#diagnosis-rules) |
+| Session modes | [Session Management](#session-management) (use `/session-mode`) |
 | Bug handling | [Bug Handling Policy](#bug-handling-policy) |
 | Branch rules | [Production Protection](#production-protection) |
 | Feedback loop | [Feedback Loop & Continuous Improvement](#feedback-loop--continuous-improvement) |
