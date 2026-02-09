@@ -20,11 +20,11 @@ Review unassigned, unprioritized, or stale issues using [schpet/linear-cli](http
 
 2. Fetch issues that need attention. If `$ARGUMENTS` is provided, filter by team:
    ```bash
-   linear issue list --team "$ARGUMENTS" -A --json
+   linear issue list --team "$ARGUMENTS" -A
    ```
    Without arguments, fetch all unstarted issues across teams:
    ```bash
-   linear issue list -A --json
+   linear issue list -A
    ```
    Note: `-A` lists all unstarted issues (not just yours).
 

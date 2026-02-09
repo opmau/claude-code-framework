@@ -24,11 +24,11 @@ Pull issues from Linear using [schpet/linear-cli](https://github.com/schpet/line
 
 2. Fetch issues from Linear. If `$ARGUMENTS` is provided, use it as the team key:
    ```bash
-   linear issue list --team "$ARGUMENTS" --json
+   linear issue list --team "$ARGUMENTS" --all-states
    ```
    Without arguments, fetch the current user's assigned issues:
    ```bash
-   linear issue list --json
+   linear issue list --all-states
    ```
 
 3. Categorize issues by status and type:
@@ -72,7 +72,7 @@ Pull issues from Linear using [schpet/linear-cli](https://github.com/schpet/line
    Upcoming: [count]
    Recently completed: [count]
 
-   For full issue details, use: linear issue view ENG-123 --json
+   For full issue details: linear issue view ENG-123 --json
    ```
 
 ## Arguments
