@@ -9,7 +9,7 @@ model: haiku
 
 # /linear-update — Update a Linear issue
 
-Push updates to a Linear issue using [schpet/linear-cli](https://github.com/schpet/linear-cli) and sync the local ticket if one exists.
+Push updates to a Linear issue using [schpet/linear-cli](https://github.com/schpet/linear-cli).
 
 ## Steps
 
@@ -53,16 +53,12 @@ Push updates to a Linear issue using [schpet/linear-cli](https://github.com/schp
    - `--label "<label-name>"` — add label (repeat flag for multiple)
    - `-t "<title>"` — update title
    - `-d "<description>"` — update description
-
-6. If a linked local ticket exists (search for `Linear: ENG-123` in `.claude/tickets/`):
-   - Update the local ticket status to match
-   - Map Linear status → local status: Todo→🔴, In Progress→🟡, Done→🟢, Cancelled→⚫
-
-7. Report:
+6. Report:
    ```
    Updated: ENG-123 — <title>
    Changes: state → Done, priority → High
-   Local ticket: TICKET-NNN synced | no local ticket
+
+   Run /linear-sync to update the local snapshot.
    ```
 
 ## Arguments
@@ -78,5 +74,5 @@ Push updates to a Linear issue using [schpet/linear-cli](https://github.com/schp
 - Always show current vs proposed state and confirm before applying
 - When marking an issue as Done, ask if a comment should be added (e.g., linking to the PR):
   `linear issue comment add ENG-123 -b "Fixed in PR #42"`
-- Keep local tickets in sync — search `.claude/tickets/` for the Linear ID
+- Run `/linear-sync` after updates to refresh the local snapshot
 - If the issue doesn't exist in Linear, report the error clearly

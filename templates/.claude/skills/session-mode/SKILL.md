@@ -1,6 +1,6 @@
 ---
 name: session-mode
-description: Set the operating mode for the current session. Use when the user says "session mode", "set mode", "document only mode", "refactor mode", or "debug mode".
+description: Set the operating mode for the current session. Use when the user says "session mode", "set mode", "refactor mode", "debug mode", or "feature mode".
 argument-hint: "<mode name>"
 user-invocable: true
 allowed-tools: Read, Write, Glob
@@ -13,12 +13,6 @@ Lock the current session into a specific operating mode with enforced constraint
 
 ## Available Modes
 
-### `document-only`
-- **Purpose:** Audit, investigate, and document — no source changes
-- **Allowed edits:** `docs/`, `CLAUDE.md`, `.claude/tickets/`
-- **Forbidden:** Any edits to `src/`, `tests/`, or other source files
-- **Use when:** Investigating bugs during refactoring, auditing code, creating tickets
-
 ### `debug`
 - **Purpose:** Find and fix a specific bug
 - **Allowed edits:** Files directly related to the bug (max 3 files)
@@ -29,7 +23,7 @@ Lock the current session into a specific operating mode with enforced constraint
 ### `refactor`
 - **Purpose:** Restructure code without changing behavior
 - **Allowed edits:** Files in the refactoring plan (max 10 files)
-- **Required:** Tests must pass before AND after. Document any bugs found, don't fix them.
+- **Required:** Tests must pass before AND after. Document any bugs found (use `/document-bug`), don't fix them.
 - **Forbidden:** Bug fixes, new features, behavior changes
 - **Use when:** Splitting files, moving code between layers, renaming
 
@@ -39,13 +33,6 @@ Lock the current session into a specific operating mode with enforced constraint
 - **Required:** Plan approved before coding. Tests for new code.
 - **Forbidden:** Unrelated refactoring, fixing pre-existing bugs
 - **Use when:** Building new capabilities
-
-### `review`
-- **Purpose:** Read and assess code quality — no changes
-- **Allowed edits:** None (read-only)
-- **Required:** Report findings in structured format
-- **Forbidden:** All file modifications
-- **Use when:** Code review, architecture assessment, onboarding to a codebase
 
 ## Steps
 
@@ -81,3 +68,4 @@ Lock the current session into a specific operating mode with enforced constraint
 - Mode constraints supplement (don't replace) CLAUDE.md rules
 - If the user asks for something that violates the active mode, remind them of the constraint and ask if they want to switch modes
 - The mode persists until explicitly changed or the session ends
+- For read-only code review, use the `/review` skill directly — no session mode needed

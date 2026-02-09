@@ -9,7 +9,7 @@ model: sonnet
 
 # /linear-create — Create a Linear issue
 
-Create a new issue in Linear using [schpet/linear-cli](https://github.com/schpet/linear-cli) and optionally link it to a local ticket.
+Create a new issue in Linear using [schpet/linear-cli](https://github.com/schpet/linear-cli).
 
 ## Steps
 
@@ -56,18 +56,13 @@ Create a new issue in Linear using [schpet/linear-cli](https://github.com/schpet
    ```bash
    linear issue url ENG-456
    ```
-
-7. Ask the user if they want a corresponding local ticket. If yes:
-   - Create a local ticket via the `/create-ticket` pattern
-   - Include `Linear: ENG-456` in the ticket metadata
-
-8. Report:
+7. Report:
    ```
    Created: ENG-456 — <title>
    Priority: <priority>
    URL: <linear-issue-url>
 
-   Local ticket: TICKET-NNN (linked) | none
+   Run /linear-sync to update the local snapshot.
    ```
 
 ## Arguments

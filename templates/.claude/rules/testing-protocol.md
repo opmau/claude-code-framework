@@ -12,12 +12,12 @@ Check the test mapping table in CLAUDE.md to determine which tests to run based 
 
 ## Bug Handling
 
-- During refactoring: DO NOT FIX bugs. Document in KNOWN_ISSUES.md, continue working.
-- During normal development: If a bug blocks your task, fix it. If unrelated, document it first.
-- If a test fails: Document in KNOWN_ISSUES.md. Do NOT attempt on-the-fly fixes.
+- During refactoring: DO NOT FIX bugs. Use `/document-bug` to create a Linear issue, continue working.
+- During normal development: If a bug blocks your task, fix it. If unrelated, use `/document-bug` first.
+- If a test fails: Use `/document-bug` to log it in Linear. Do NOT attempt on-the-fly fixes.
 
 ## Before Every Commit
 
 1. Run the relevant test suite
 2. If tests fail, do not commit
-3. Document failures in KNOWN_ISSUES.md if they're pre-existing
+3. Log pre-existing failures using `/document-bug` if not already tracked in Linear

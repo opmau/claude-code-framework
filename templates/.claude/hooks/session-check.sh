@@ -25,7 +25,7 @@ if [ $((COUNT % 10)) -eq 0 ]; then
 {
   "hookSpecificOutput": {
     "hookEventName": "Stop",
-    "additionalContext": "SESSION CHECK: You've had 10+ interactions. Consider: (1) Any gotchas discovered that should go in CLAUDE.md? (2) Any bugs found that should go in KNOWN_ISSUES.md? (3) Is context getting full — should we /clear?"
+    "additionalContext": "SESSION CHECK: You've had 10+ interactions. Consider: (1) Any gotchas discovered that should go in CLAUDE.md? (2) Any bugs found that should be logged with /document-bug? (3) Is context getting full — should we /clear?"
   }
 }
 EOF
