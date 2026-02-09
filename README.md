@@ -7,13 +7,12 @@ A project framework for Claude Code that enforces engineering discipline, preven
 A complete set of templates for configuring Claude Code as a **rigorous engineering partner** rather than a compliant assistant. Includes:
 
 - **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
-- **Skills** — 13 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`)
+- **Skills** — 17 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`, `/linear-create`, `/linear-sync`, `/linear-triage`, `/linear-sprint`, `/linear-update`)
 - **Hooks** — 5 automated enforcement hooks (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
-- **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops)
-- **Agents** — 4 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert)
-- **Ticket system** — Persistent task tracking across sessions with structured templates
-- **Setup tooling** — Automated setup script, comment stripping for production, `.claudeignore` template
-- **Companion docs** — KNOWN_ISSUES.md, CURRENT_SPRINT.md templates
+- **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, Linear workflow)
+- **Agents** — 5 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert, Linear PM)
+- **Issue tracking** — Linear as single source of truth with local snapshot cache (`docs/LINEAR_SNAPSHOT.md`)
+- **Setup tooling** — Automated setup and update scripts, comment stripping for production, `.claudeignore` template
 
 ## Why This Exists
 
@@ -82,19 +81,34 @@ Read CLAUDE.md and answer:
 
 See [PROJECT_SETUP.md](PROJECT_SETUP.md) for the full 11-step setup guide.
 
+## Updating Existing Projects
+
+When the framework gets new skills, bug fixes, or rule improvements, update your project:
+
+```bash
+# Preview what would change
+bash claude-code-framework/bin/update.sh /path/to/your-project --dry-run
+
+# Apply updates
+bash claude-code-framework/bin/update.sh /path/to/your-project
+```
+
+The update script overwrites **framework files only** (skills, rules, hooks, agents, settings) and never touches your project-specific files (`CLAUDE.md`, `docs/`, `.linear.toml`). It also removes skills or rules that were deleted from the framework.
+
 ## What's Included
 
 ```
 bin/
 ├── setup.sh                            # Automated project setup script
+├── update.sh                           # Update framework files in existing projects
 └── strip-comments.sh                   # Strip coaching comments for production
 
 templates/
 ├── CLAUDE.md                           # Main agent rules template
 ├── .claudeignore                       # Files Claude should skip
 ├── docs/
-│   ├── KNOWN_ISSUES.md                 # Bug tracking template
-│   └── CURRENT_SPRINT.md               # Sprint state template
+│   ├── CURRENT_SPRINT.md              # Sprint state template
+│   └── LINEAR_SNAPSHOT.md             # Auto-generated Linear cache
 └── .claude/
     ├── settings.local.json             # Hook registration (pre-configured)
     ├── skills/
@@ -105,12 +119,16 @@ templates/
     │   ├── retro/SKILL.md              # /retro — session retrospective
     │   ├── commit/SKILL.md             # /commit — conventional commit generation
     │   ├── create-pr/SKILL.md          # /create-pr — structured PR creation
-    │   ├── create-ticket/SKILL.md      # /create-ticket — task tracking
     │   ├── create-skill/SKILL.md       # /create-skill — generate new skills
-    │   ├── document-bug/SKILL.md       # /document-bug — log bugs without fixing
+    │   ├── document-bug/SKILL.md       # /document-bug — log bugs in Linear
     │   ├── session-mode/SKILL.md       # /session-mode — set session constraints
     │   ├── diagnose/SKILL.md           # /diagnose — structured bug investigation
-    │   └── fix-issue/SKILL.md          # /fix-issue — fix tracked known issues
+    │   ├── fix-issue/SKILL.md          # /fix-issue — fix tracked Linear issues
+    │   ├── linear-create/SKILL.md      # /linear-create — create Linear issues
+    │   ├── linear-sync/SKILL.md        # /linear-sync — generate local snapshot
+    │   ├── linear-triage/SKILL.md      # /linear-triage — triage and groom issues
+    │   ├── linear-sprint/SKILL.md      # /linear-sprint — sprint/cycle management
+    │   └── linear-update/SKILL.md      # /linear-update — update issue status
     ├── hooks/
     │   ├── check-file-size.sh          # Warns when files exceed size limits
     │   ├── check-scope.sh              # Warns when editing out-of-scope files + session mode
@@ -122,16 +140,14 @@ templates/
     │   ├── scope-guardrails.md         # Change scope limits
     │   ├── file-size-limits.md         # Size limits (path-scoped to src/)
     │   ├── testing-protocol.md         # Test mapping, bug handling
+    │   ├── linear-workflow.md          # Linear integration rules
     │   └── feedback-loop.md            # Post-session review triggers
     ├── agents/
     │   ├── code-reviewer.md            # Pre-commit reviewer with memory
     │   ├── planner.md                  # Task planning and breakdown
     │   ├── qa-tester.md                # Test writing and QA
-    │   └── domain-expert.md            # Domain specialist with memory
-    └── tickets/
-        ├── README.md                   # Ticket system guide
-        ├── ticket-list.md              # Centralized task index
-        └── TICKET-000-template.md      # Ticket template
+    │   ├── domain-expert.md            # Domain specialist with memory
+    │   └── linear-pm.md               # Linear PM — sprint planning, health checks
 ```
 
 ## Key Features
@@ -151,19 +167,17 @@ Claude's default is to agree with users. In engineering, this creates blind spot
 
 Lock sessions into specific operating modes to prevent drift:
 
-- `/session-mode document-only` — audit and document, no source changes
 - `/session-mode debug` — focused bug fixing, no refactoring
 - `/session-mode refactor` — restructure code, document bugs found but don't fix them
 - `/session-mode feature` — build new functionality with a plan
-- `/session-mode review` — read-only code assessment
 
 ### Structured Bug Workflow
 
 Complete lifecycle from discovery to fix:
 
-- `/document-bug` — log bugs without touching source code (enforces "document, don't fix")
+- `/document-bug` — log bugs as Linear issues without touching source code
 - `/diagnose` — structured differential diagnosis with multiple hypotheses
-- `/fix-issue` — pick a tracked bug from KNOWN_ISSUES, fix it, verify, update docs
+- `/fix-issue` — pick a tracked bug from Linear, fix it, verify, update the issue
 
 ### Automated Enforcement via Hooks
 
@@ -181,17 +195,17 @@ Built-in slash commands for clean git workflows:
 
 - `/commit` — generates conventional commit messages from staged changes
 - `/create-pr` — creates PRs with structured summary, changes list, and test plan
-- `/create-ticket` — tracks tasks persistently across sessions
 - `/create-skill` — meta-skill to generate new custom skills
 
 ### Specialized Agents
 
 Four agents with persistent memory for different roles:
 
-- **code-reviewer** — pre-commit review against CLAUDE.md rules (Haiku, fast)
+- **code-reviewer** — pre-commit review against CLAUDE.md rules (Opus)
 - **planner** — breaks down complex tasks before implementation (Opus)
-- **qa-tester** — writes tests, validates coverage, investigates failures (Sonnet)
+- **qa-tester** — writes tests, validates coverage, investigates failures (Opus)
 - **domain-expert** — deep expertise for domain-specific debugging (Opus)
+- **linear-pm** — sprint planning, velocity analysis, project health (Opus)
 
 ### Feedback Loop
 
