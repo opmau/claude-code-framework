@@ -22,7 +22,7 @@ Before claiming "X is implemented" or "the code does Y":
 
 ## Max Fix Attempts
 
-If the 2nd fix attempt fails: STOP, SUMMARIZE what was tried, STATE what you think the root cause is, ASK for guidance, DOCUMENT in KNOWN_ISSUES.md.
+If the 2nd fix attempt fails: STOP, SUMMARIZE what was tried, STATE what you think the root cause is, ASK for guidance, use `/document-bug` to log the issue in Linear.
 
 ## Diagnosis Rules
 

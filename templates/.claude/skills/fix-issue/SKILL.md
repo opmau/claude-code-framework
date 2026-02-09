@@ -1,53 +1,76 @@
 ---
 name: fix-issue
-description: Pick a bug from KNOWN_ISSUES.md, fix it, verify, and commit. Use when the user says "fix issue", "fix bug", "work on known issue", or "pick a bug".
-argument-hint: "<BUG-NNN or description>"
+description: Pick a bug from Linear, fix it, verify, and update. Use when the user says "fix issue", "fix bug", "work on known issue", or "pick a bug".
+argument-hint: "<ENG-NNN or description>"
 user-invocable: true
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob
 model: sonnet
 ---
 
-# /fix-issue — Fix a tracked known issue
+# /fix-issue — Fix a tracked Linear issue
 
-Select a bug from KNOWN_ISSUES.md, fix it in a focused session, verify the fix, and update documentation.
+Select a bug from Linear, fix it in a focused session, verify the fix, and update the issue status.
 
 ## Steps
 
-1. **Select the issue:**
-   - If `$ARGUMENTS` specifies a BUG-NNN, find that entry in `docs/KNOWN_ISSUES.md`
-   - If `$ARGUMENTS` is a description, search for matching entries
-   - If no arguments, list all Open issues and ask the user to pick one
+1. Verify the Linear CLI is available:
+   ```bash
+   linear --version 2>/dev/null || echo "LINEAR_CLI_MISSING"
+   ```
 
-2. **Review the issue entry:**
-   - Read the symptom, evidence, suspected root cause, and suggested fix approach
+2. **Select the issue:**
+   - If `$ARGUMENTS` specifies an issue ID (e.g., `ENG-123`), fetch that issue:
+     ```bash
+     linear issue view ENG-123 --json
+     ```
+   - If `$ARGUMENTS` is a description, search for matching bug issues:
+     ```bash
+     linear issue list --label "bug" --json
+     ```
+     Then match by title/description.
+   - If no arguments, list all open bugs and ask the user to pick one:
+     ```bash
+     linear issue list --label "bug" --json
+     ```
+
+3. **Review the issue details:**
+   - Read the symptom, evidence, suspected root cause from the Linear issue description
    - Verify the evidence is still valid (re-check logs, reproduce if possible)
-   - If the entry lacks evidence, gather it before proceeding
+   - If the issue lacks evidence, gather it before proceeding
+   - Optionally check `docs/LINEAR_SNAPSHOT.md` for a quick local reference
 
-3. **Plan the fix:**
+4. **Plan the fix:**
    - List the files that need to change (must be within Change Size Limits for bug fixes: 1-3 files)
    - State the fix approach and what could go wrong
    - Get user confirmation before proceeding
 
-4. **Implement the fix:**
+5. **Implement the fix:**
    - Make the minimum changes needed
-   - Follow the max 2 fix attempts rule — if the 2nd attempt fails, STOP and update the issue
+   - Follow the max 2 fix attempts rule — if the 2nd attempt fails, STOP and add a comment to the issue
 
-5. **Verify the fix:**
+6. **Verify the fix:**
    - Run the project build command
    - Run relevant tests from the test mapping table
    - If the original issue included specific reproduction steps, verify the symptom is gone
 
-6. **Update documentation:**
-   - Update the issue in `docs/KNOWN_ISSUES.md`:
-     - Change Status to `FIXED`
-     - Add the actual root cause (may differ from suspected)
-     - Add the fix details with file:line references
-     - Strikethrough the entry title: `### ~~[BUG-NNN] — [description]~~`
-   - Update `docs/CURRENT_SPRINT.md` if the fix is part of active work
+7. **Update the Linear issue:**
+   ```bash
+   linear issue update ENG-123 --state "Done"
+   linear issue comment add ENG-123 -b "**Root Cause:** [actual root cause]
 
-7. **Report:**
+   **Fix Applied:**
+   - [file:line] — [what changed]
+
+   **Verification:**
+   - Build: PASS
+   - Tests: PASS
+
+   **Commit:** [commit hash or 'ready to commit']"
    ```
-   ## Fixed: BUG-NNN — [description]
+
+8. **Report:**
+   ```
+   ## Fixed: ENG-123 — [description]
 
    ### Root Cause
    [actual root cause]
@@ -63,7 +86,7 @@ Select a bug from KNOWN_ISSUES.md, fix it in a focused session, verify the fix, 
    ### Files Changed
    - [file list]
 
-   Ready to commit? Use /commit to create a conventional commit.
+   Ready to commit? Use /commit to create a conventional commit with [ENG-123] reference.
    ```
 
 ## Notes
@@ -71,4 +94,5 @@ Select a bug from KNOWN_ISSUES.md, fix it in a focused session, verify the fix, 
 - Only fix ONE issue per invocation — single-responsibility
 - If the fix touches more than 3 files, stop and discuss scope with the user
 - If you discover a new bug during the fix, use /document-bug to log it separately
-- Never mark an issue as FIXED if tests fail
+- Never mark an issue as Done if tests fail
+- Include the issue ID in the commit message: `fix(module): description [ENG-123]`

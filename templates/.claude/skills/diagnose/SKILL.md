@@ -22,7 +22,7 @@ Investigate a bug systematically by gathering evidence, forming multiple hypothe
 2. **Collect evidence** — read logs, error output, and relevant source code:
    - Read the FULL log, not just the error line
    - Search for related error patterns in the codebase
-   - Check `docs/KNOWN_ISSUES.md` for related bugs
+   - Check `docs/LINEAR_SNAPSHOT.md` for related tracked bugs
    - Check recent git changes: `git log --oneline -20` and `git diff HEAD~5`
 
 3. **Form hypotheses** — generate 2-4 distinct possible causes:
@@ -76,4 +76,4 @@ Investigate a bug systematically by gathering evidence, forming multiple hypothe
 - This skill is investigation-only — it does not modify source files
 - Use Task agents for parallel investigation when hypotheses are independent
 - If all hypotheses are inconclusive, say so and suggest additional diagnostic steps
-- Add findings to `docs/KNOWN_ISSUES.md` if the bug isn't already tracked
+- Use `/document-bug` to log findings in Linear if the bug isn't already tracked

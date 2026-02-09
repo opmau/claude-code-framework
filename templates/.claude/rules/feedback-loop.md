@@ -16,7 +16,7 @@ These project docs are living documents. Proactively suggest updates when:
 - A gotcha was discovered that's not in Domain Knowledge
 - A build/test command changed
 - An architecture decision was made
-- A bug was fixed (update KNOWN_ISSUES.md)
+- A bug was fixed (update the Linear issue via `/linear-update`)
 - A rule in CLAUDE.md was wrong or unhelpful — say so
 
 ## Retrospective Triggers

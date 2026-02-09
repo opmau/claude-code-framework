@@ -23,7 +23,7 @@ Review the current session and propose documentation updates.
 
 3. Check for documentation updates needed:
    - Read current `CLAUDE.md` Domain Knowledge section — any new gotchas to add?
-   - Read current `docs/KNOWN_ISSUES.md` — any issues to add or update?
+   - Check `docs/LINEAR_SNAPSHOT.md` — any bugs to log with `/document-bug`?
    - Read current `docs/CURRENT_SPRINT.md` — any progress to record?
    - Any build/test commands that changed?
    - Any architecture decisions that should be documented?
@@ -40,7 +40,7 @@ Review the current session and propose documentation updates.
 
    ### Proposed Documentation Updates
    - [ ] CLAUDE.md: Add gotcha about [X] to Domain Knowledge
-   - [ ] KNOWN_ISSUES.md: [Add/Update] issue about [Y]
+   - [ ] Linear: Log bug about [Y] with /document-bug
    - [ ] CURRENT_SPRINT.md: Update progress on [Z]
    - [ ] No updates needed ← (say this if true, don't invent updates)
 

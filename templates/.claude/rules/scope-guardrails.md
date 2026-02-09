@@ -3,7 +3,7 @@
 ## Single-Responsibility Changes
 
 - Each commit addresses ONE concern (one bug, one feature, one refactor)
-- If you discover a second problem, DOCUMENT it in KNOWN_ISSUES.md, don't fix it now
+- If you discover a second problem, DOCUMENT it using `/document-bug`, don't fix it now
 - Do NOT "improve" code you're reading for context — only modify files you were asked to modify
 
 ## Pre-Change Checklist

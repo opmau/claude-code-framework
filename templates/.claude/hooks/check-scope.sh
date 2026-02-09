@@ -21,7 +21,7 @@ fi
 # Add more directories as needed for your project.
 ALLOWED_DIRS="src/ tests/ docs/ .claude/"
 # Files that are always OK to edit
-ALLOWED_FILES="CLAUDE.md docs/KNOWN_ISSUES.md docs/CURRENT_SPRINT.md"
+ALLOWED_FILES="CLAUDE.md docs/CURRENT_SPRINT.md docs/LINEAR_SNAPSHOT.md"
 # ----------------------------------------
 
 # --- SESSION MODE ENFORCEMENT ---
@@ -29,10 +29,6 @@ ALLOWED_FILES="CLAUDE.md docs/KNOWN_ISSUES.md docs/CURRENT_SPRINT.md"
 if [ -f "docs/CURRENT_SPRINT.md" ]; then
   SESSION_MODE=$(grep -A1 "Active Session Mode" docs/CURRENT_SPRINT.md 2>/dev/null | grep "Mode:" | sed 's/.*Mode:[[:space:]]*//' | tr -d '[:space:]')
   case "$SESSION_MODE" in
-    document-only|review)
-      # In document-only or review mode, only docs and .claude are allowed
-      ALLOWED_DIRS="docs/ .claude/"
-      ;;
     debug)
       # In debug mode, keep defaults but add extra warning
       ;;
