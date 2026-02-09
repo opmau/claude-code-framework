@@ -53,7 +53,6 @@ Push updates to a Linear issue using [schpet/linear-cli](https://github.com/schp
    - `--label "<label-name>"` — add label (repeat flag for multiple)
    - `-t "<title>"` — update title
    - `-d "<description>"` — update description
-
 6. Report:
    ```
    Updated: ENG-123 — <title>

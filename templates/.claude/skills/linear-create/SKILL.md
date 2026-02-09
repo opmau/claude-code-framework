@@ -56,7 +56,6 @@ Create a new issue in Linear using [schpet/linear-cli](https://github.com/schpet
    ```bash
    linear issue url ENG-456
    ```
-
 7. Report:
    ```
    Created: ENG-456 — <title>
