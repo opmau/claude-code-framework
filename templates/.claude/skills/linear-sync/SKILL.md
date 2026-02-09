@@ -1,7 +1,7 @@
 ---
 name: linear-sync
 description: Sync Linear issues with local ticket system. Use when the user says "sync linear", "pull linear issues", or "update from linear".
-argument-hint: "[team-key or project-slug]"
+argument-hint: "[team-key]"
 user-invocable: true
 allowed-tools: Bash, Read, Write, Glob, Grep
 model: sonnet
@@ -9,7 +9,7 @@ model: sonnet
 
 # /linear-sync — Sync Linear issues to local tickets
 
-Pull issues from Linear and sync them with the local `.claude/tickets/` system.
+Pull issues from Linear using [schpet/linear-cli](https://github.com/schpet/linear-cli) and sync them with the local `.claude/tickets/` system.
 
 ## Steps
 
@@ -17,15 +17,18 @@ Pull issues from Linear and sync them with the local `.claude/tickets/` system.
    ```bash
    linear --version 2>/dev/null || echo "LINEAR_CLI_MISSING"
    ```
-   If missing, tell the user to install it: `npm install -g @linear/cli` and authenticate with `linear auth`.
+   If missing, tell the user to install it:
+   - macOS: `brew install schpet/tap/linear`
+   - Deno: `deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli`
+   Then authenticate: `linear auth login`
 
-2. Fetch issues from Linear. If `$ARGUMENTS` is provided, use it as the team key or project filter:
+2. Fetch issues from Linear. If `$ARGUMENTS` is provided, use it as the team key:
    ```bash
-   linear issue list --team "$ARGUMENTS" --status "Todo,In Progress,Blocked" --format json
+   linear issue list --team "$ARGUMENTS" --json
    ```
-   Without arguments, fetch all assigned-to-me issues:
+   Without arguments, fetch the current user's assigned issues:
    ```bash
-   linear issue list --mine --status "Todo,In Progress,Blocked" --format json
+   linear issue list --json
    ```
 
 3. Read the current local ticket index:
@@ -43,6 +46,7 @@ Pull issues from Linear and sync them with the local `.claude/tickets/` system.
    - Map Linear status to local status: Todo→🔴, In Progress→🟡, Done→🟢, Cancelled→⚫
    - Include the Linear issue ID (e.g., `ENG-123`) in the ticket metadata
    - Add a `Linear: ENG-123` field in the ticket header
+   - Get extra detail per issue if needed: `linear issue view ENG-123 --json`
 
 6. Update `.claude/tickets/ticket-list.md` with any new or changed tickets.
 
@@ -50,7 +54,7 @@ Pull issues from Linear and sync them with the local `.claude/tickets/` system.
    ```
    ## Linear Sync Results
 
-   Source: [team/project or "my issues"]
+   Source: [team or "my issues"]
 
    ### Created (Linear → Local):
    - TICKET-NNN (ENG-123): <title>
@@ -66,7 +70,7 @@ Pull issues from Linear and sync them with the local `.claude/tickets/` system.
 ## Arguments
 
 - No arguments: sync all issues assigned to the current user
-- `$ARGUMENTS`: filter by team key (e.g., `ENG`) or project slug
+- `$ARGUMENTS`: filter by team key (e.g., `ENG`)
 
 ## Notes
 
@@ -74,3 +78,4 @@ Pull issues from Linear and sync them with the local `.claude/tickets/` system.
 - If a local ticket has changes not in Linear, flag it as a conflict rather than overwriting
 - The Linear issue ID is the source of truth for linking — stored in ticket metadata
 - Sync is pull-only by default — use `/linear-update` to push changes back to Linear
+- Use `linear issue list --help` to discover additional filtering flags

@@ -1,7 +1,7 @@
 ---
 name: linear-sprint
 description: Manage Linear cycles and sprint planning. Use when the user says "sprint planning", "manage cycle", "linear sprint", or "plan cycle".
-argument-hint: "[current|next|cycle-id]"
+argument-hint: "[current|next]"
 user-invocable: true
 allowed-tools: Bash, Read, Write, Grep
 model: sonnet
@@ -9,7 +9,9 @@ model: sonnet
 
 # /linear-sprint — Manage Linear cycles
 
-View, plan, and report on Linear cycles (sprints).
+View, plan, and report on Linear cycles (sprints) using [schpet/linear-cli](https://github.com/schpet/linear-cli).
+
+**Note:** The Linear CLI does not have a dedicated `cycle` command. This skill uses the CLI for issue data and falls back to the Linear GraphQL API (via `curl` + `linear auth token`) for cycle-specific queries, as documented by the CLI itself.
 
 ## Steps
 
@@ -18,20 +20,31 @@ View, plan, and report on Linear cycles (sprints).
    linear --version 2>/dev/null || echo "LINEAR_CLI_MISSING"
    ```
 
-2. Determine which cycle to operate on:
+2. Get the GraphQL schema to discover cycle fields if needed:
+   ```bash
+   linear schema -o "${TMPDIR:-/tmp}/linear-schema.graphql"
+   grep -A 30 "^type Cycle " "${TMPDIR:-/tmp}/linear-schema.graphql"
+   ```
+
+3. Determine which cycle to operate on:
    - `$ARGUMENTS` = `current` or empty → current active cycle
    - `$ARGUMENTS` = `next` → upcoming cycle
-   - `$ARGUMENTS` = cycle ID → specific cycle
 
-3. Fetch cycle details:
+4. Fetch cycle data via the GraphQL API:
    ```bash
-   linear cycle list --active --format json
+   curl -s -X POST https://api.linear.app/graphql \
+     -H "Content-Type: application/json" \
+     -H "Authorization: $(linear auth token)" \
+     -d '{"query": "{ team(id: \"TEAM_ID\") { activeCycle { id name startsAt endsAt issues { nodes { identifier title state { name } priority assignee { name } } } } } }"}'
    ```
+   Get the team ID first: `linear team id`
+
+5. Fetch issue details for the cycle using the CLI for richer data:
    ```bash
-   linear issue list --cycle active --format json
+   linear issue view ENG-123 --json
    ```
 
-4. Analyze the cycle and generate a report:
+6. Generate the appropriate report:
 
    **For current cycle — progress report:**
    ```
@@ -42,7 +55,6 @@ View, plan, and report on Linear cycles (sprints).
    - Completed: [count] ([percent]%)
    - In Progress: [count]
    - Todo: [count]
-   - Blocked: [count]
 
    ### By Priority:
    - Urgent: [done/total]
@@ -51,13 +63,9 @@ View, plan, and report on Linear cycles (sprints).
    - Low: [done/total]
 
    ### At Risk:
-   - ENG-123: <title> — [reason: blocked, stale, overdue]
-   - ENG-456: <title> — [reason]
+   - ENG-123: <title> — [reason: stale, no assignee, etc.]
 
-   ### Velocity:
-   - Points completed: [count]
-   - Days remaining: [count]
-   - Projected completion: [on-track / at-risk / behind]
+   ### Days remaining: [count]
    ```
 
    **For next cycle — planning view:**
@@ -65,30 +73,14 @@ View, plan, and report on Linear cycles (sprints).
    ## Planning: [next cycle name] ([start] → [end])
 
    ### Candidates (unscheduled high-priority):
-   | Issue | Title | Priority | Estimate | Labels |
-   |-------|-------|----------|----------|--------|
-   | ENG-789 | <title> | High | 3pts | feature |
+   | Issue | Title | Priority | Labels |
+   |-------|-------|----------|--------|
+   | ENG-789 | <title> | High | feature |
 
    ### Carryover (incomplete from current):
-   | Issue | Title | Status | Remaining |
-   |-------|-------|--------|-----------|
-   | ENG-123 | <title> | In Progress | ~2pts |
-
-   ### Capacity:
-   - Team capacity: [estimated points]
-   - Candidate total: [points]
-   - Carryover total: [points]
-   - Available: [remaining points]
-   ```
-
-5. If planning next cycle, ask the user which candidates to add:
-   ```
-   Add candidates to next cycle? (all / select by number / none)
-   ```
-
-6. Apply changes if approved:
-   ```bash
-   linear issue update ENG-789 --cycle "<next-cycle-id>"
+   | Issue | Title | Status |
+   |-------|-------|--------|
+   | ENG-123 | <title> | In Progress |
    ```
 
 7. Optionally update `docs/CURRENT_SPRINT.md` with the cycle report for local reference.
@@ -97,11 +89,11 @@ View, plan, and report on Linear cycles (sprints).
 
 - No arguments or `current`: report on active cycle
 - `next`: plan the upcoming cycle
-- Cycle ID: operate on a specific cycle
 
 ## Notes
 
 - Sprint reports are read-only by default — only modify cycle contents with user approval
 - Velocity calculations are estimates — flag them as such
 - Carryover issues should be highlighted, not automatically moved
-- Always sync with local `CURRENT_SPRINT.md` when reporting
+- The GraphQL API is used because `linear-cli` doesn't have a cycle command — prefer CLI commands for everything else
+- Get your auth token for API calls via: `linear auth token`
