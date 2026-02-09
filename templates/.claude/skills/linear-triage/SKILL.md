@@ -9,7 +9,7 @@ model: sonnet
 
 # /linear-triage — Triage Linear inbox
 
-Review unassigned or unprioritized issues and help triage them.
+Review unassigned or unprioritized issues using [schpet/linear-cli](https://github.com/schpet/linear-cli) and help triage them.
 
 ## Steps
 
@@ -18,27 +18,32 @@ Review unassigned or unprioritized issues and help triage them.
    linear --version 2>/dev/null || echo "LINEAR_CLI_MISSING"
    ```
 
-2. Fetch untriaged issues. If `$ARGUMENTS` is provided, filter by team:
+2. Fetch issues that need triage. If `$ARGUMENTS` is provided, filter by team:
    ```bash
-   linear issue list --team "$ARGUMENTS" --status "Triage,Backlog" --no-assignee --format json
+   linear issue list --team "$ARGUMENTS" -A --json
    ```
-   Without arguments:
+   Without arguments, fetch all unstarted issues across teams:
    ```bash
-   linear issue list --status "Triage,Backlog" --no-assignee --format json
+   linear issue list -A --json
+   ```
+   Note: `-A` lists all unstarted issues (not just yours).
+
+3. Identify issues needing attention:
+   - No priority set
+   - No assignee
+   - Sitting in Triage/Backlog state
+
+4. For each issue needing triage, fetch details:
+   ```bash
+   linear issue view ENG-123 --json
    ```
 
-3. Also fetch recently created issues that may need review:
-   ```bash
-   linear issue list --created-after "7d" --status "Triage" --format json
-   ```
-
-4. For each issue, analyze and propose:
+5. Analyze and propose for each issue:
    - **Priority:** based on title, description, and labels
-   - **Assignment:** suggest a team member if patterns are clear (e.g., frontend issues → frontend team)
+   - **Assignment:** suggest a team member if patterns are clear
    - **Labels:** suggest missing labels based on content analysis
-   - **Cycle:** suggest current or next cycle placement
 
-5. Present the triage summary for user review:
+6. Present the triage summary for user review:
    ```
    ## Linear Triage Report
 
@@ -46,33 +51,33 @@ Review unassigned or unprioritized issues and help triage them.
 
    | Issue | Title | Suggested Priority | Suggested Labels | Rationale |
    |-------|-------|--------------------|------------------|-----------|
-   | ENG-123 | <title> | High | bug, api | <why> |
-   | ENG-124 | <title> | Low | tech-debt | <why> |
+   | ENG-123 | <title> | High (2) | bug | <why> |
+   | ENG-124 | <title> | Low (4) | tech-debt | <why> |
 
    ### Suggested Actions:
-   1. ENG-123: Assign to [team/person], add to current cycle
-   2. ENG-124: Move to backlog, label as tech-debt
+   1. ENG-123: Set priority high, assign to [person]
+   2. ENG-124: Set priority low, label as tech-debt
 
    Apply these suggestions? (all / select / none)
    ```
 
-6. If the user approves (all or selected), apply the changes:
+7. If the user approves (all or selected), apply changes:
    ```bash
-   linear issue update ENG-123 --priority high --label "bug,api"
+   linear issue update ENG-123 --priority 2 --label "bug"
+   linear issue update ENG-124 --priority 4 --label "tech-debt"
    ```
 
-7. Report final results:
+8. Report final results:
    ```
    Triage Complete:
    - Prioritized: [count]
    - Labeled: [count]
-   - Assigned: [count]
    - Skipped: [count]
    ```
 
 ## Arguments
 
-- No arguments: triage all untriaged issues across teams
+- No arguments: triage all unstarted issues across teams
 - `$ARGUMENTS`: filter by team key (e.g., `ENG`)
 
 ## Notes
@@ -81,3 +86,4 @@ Review unassigned or unprioritized issues and help triage them.
 - Priority suggestions are based on keywords and labels, not assumptions
 - If an issue is ambiguous, flag it for manual review rather than guessing
 - Group related issues together when presenting (e.g., multiple bugs in same area)
+- Linear priority numbers: 0=None, 1=Urgent, 2=High, 3=Medium, 4=Low

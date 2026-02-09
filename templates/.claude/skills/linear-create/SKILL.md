@@ -9,7 +9,7 @@ model: sonnet
 
 # /linear-create — Create a Linear issue
 
-Create a new issue in Linear and optionally link it to a local ticket.
+Create a new issue in Linear using [schpet/linear-cli](https://github.com/schpet/linear-cli) and optionally link it to a local ticket.
 
 ## Steps
 
@@ -20,12 +20,10 @@ Create a new issue in Linear and optionally link it to a local ticket.
 
 2. Gather issue details. If `$ARGUMENTS` is provided, use it as the title. Determine:
    - **Title:** short, descriptive (from arguments or ask)
-   - **Team:** which Linear team (e.g., `ENG`, `DES`)
-   - **Priority:** Urgent / High / Medium / Low / None
-   - **Status:** Backlog, Todo, In Progress
-   - **Labels:** comma-separated (e.g., `bug`, `feature`, `tech-debt`)
+   - **Team:** which Linear team key (e.g., `ENG`) — check `.linear.toml` for default
+   - **Priority:** 1 (Urgent) / 2 (High) / 3 (Medium) / 4 (Low) / 0 (None)
+   - **Labels:** label names (e.g., `bug`, `feature`)
    - **Description:** what needs to be done and why
-   - **Estimate:** story points if the team uses them
 
 3. Show the proposed issue to the user for confirmation before creating:
    ```
@@ -43,24 +41,30 @@ Create a new issue in Linear and optionally link it to a local ticket.
 4. Create the issue in Linear:
    ```bash
    linear issue create \
-     --title "<title>" \
-     --team "<team>" \
-     --priority "<priority>" \
-     --label "<labels>" \
-     --description "<description>"
+     -t "<title>" \
+     -d "<description>" \
+     --team "<team-key>" \
+     --priority <priority-number> \
+     --label "<label>" \
+     --no-interactive
    ```
+   For multiple labels, repeat the flag: `--label "bug" --label "high-priority"`
 
 5. Capture the returned issue ID (e.g., `ENG-456`).
 
-6. Ask the user if they want a corresponding local ticket. If yes:
+6. Get the issue URL for reference:
+   ```bash
+   linear issue url ENG-456
+   ```
+
+7. Ask the user if they want a corresponding local ticket. If yes:
    - Create a local ticket via the `/create-ticket` pattern
    - Include `Linear: ENG-456` in the ticket metadata
 
-7. Report:
+8. Report:
    ```
    Created: ENG-456 — <title>
    Priority: <priority>
-   Status: <status>
    URL: <linear-issue-url>
 
    Local ticket: TICKET-NNN (linked) | none
@@ -73,7 +77,8 @@ Create a new issue in Linear and optionally link it to a local ticket.
 
 ## Notes
 
-- Always confirm with the user before creating — creating issues is not reversible
+- Always confirm with the user before creating — creating issues is not reversible via the CLI
 - If creating from a bug fix or code change, include relevant file references in the description
-- Default to the team configured in CLAUDE.md if available, otherwise ask
+- Default to the team configured in `.linear.toml` if available, otherwise ask
 - Keep descriptions concise but include enough context for another developer
+- Use `linear issue create --help` to discover additional flags
