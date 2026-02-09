@@ -4,7 +4,7 @@ description: Pull Linear issues and generate a local snapshot for quick referenc
 argument-hint: "[team-key]"
 user-invocable: true
 allowed-tools: Bash, Read, Write, Glob, Grep
-model: sonnet
+model: haiku
 ---
 
 # /linear-sync — Generate local Linear snapshot

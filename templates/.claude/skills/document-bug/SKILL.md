@@ -4,7 +4,7 @@ description: Document a bug by creating a Linear issue without fixing it. Use wh
 argument-hint: "<bug description>"
 user-invocable: true
 allowed-tools: Bash, Read, Grep, Glob
-model: haiku
+model: claude-3-5-haiku-latest
 ---
 
 # /document-bug — Document a bug without fixing source code
