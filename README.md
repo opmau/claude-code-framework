@@ -9,7 +9,7 @@ A complete set of templates for configuring Claude Code as a **rigorous engineer
 - **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
 - **Skills** — 13 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`)
 - **Hooks** — 5 automated enforcement hooks + optional [tdd-guard](https://github.com/nizos/tdd-guard) TDD enforcement (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
-- **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops)
+- **Rules** — 10 modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, anti-patterns, canary strategy, trust levels, complexity budget)
 - **Agents** — 4 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert)
 - **Ticket system** — Persistent task tracking across sessions with structured templates
 - **Setup tooling** — Automated setup script, comment stripping for production, `.claudeignore` template
@@ -123,7 +123,11 @@ templates/
     │   ├── scope-guardrails.md         # Change scope limits
     │   ├── file-size-limits.md         # Size limits (path-scoped to src/)
     │   ├── testing-protocol.md         # Test mapping, bug handling
-    │   └── feedback-loop.md            # Post-session review triggers
+    │   ├── feedback-loop.md            # Post-session review triggers
+    │   ├── anti-patterns.md            # Explicit "don't do this" registry
+    │   ├── canary-strategy.md          # De-risk cross-cutting changes
+    │   ├── trust-levels.md             # Progressive autonomy by module risk
+    │   └── complexity-budget.md        # Code health thresholds
     ├── agents/
     │   ├── code-reviewer.md            # Pre-commit reviewer with memory
     │   ├── planner.md                  # Task planning and breakdown
@@ -170,7 +174,7 @@ Complete lifecycle from discovery to fix:
 
 Rules aren't just documented — they're enforced automatically:
 
-- **PostToolUse** hook checks file size after every edit
+- **PostToolUse** hook checks file size and function complexity after every edit
 - **PreToolUse** hook warns about out-of-scope changes and enforces session mode constraints
 - **PreToolUse** hook warns when committing without running build/tests
 - **PreCompact** hook re-injects critical rules (including diagnosis rules) before context compression
@@ -204,6 +208,18 @@ The framework builds continuous improvement into every session:
 - Retrospective triggers for bugs, failed fixes, and incidents
 - Agent memory persistence (all agents learn over time)
 
+### Proactive Self-Improvement
+
+Beyond learning from failures, the framework includes proactive mechanisms that prevent problems before they happen:
+
+- **Anti-pattern registry** — explicit "don't do this" rules with rationale, so mistakes aren't repeated
+- **Canary strategy** — for cross-cutting changes, apply to one file first, verify, then apply broadly
+- **Trust levels** — progressive autonomy tiers match verification effort to module risk
+- **Complexity budget** — measurable thresholds (function length, nesting depth, parameter count) that trigger refactoring
+- **Decision log** — records *why* choices were made, not just what changed (in CLAUDE.md)
+- **Dependency map** — tracks non-obvious component relationships so Claude understands ripple effects
+- **Failure taxonomy** — categorizes test failure root causes to improve test infrastructure over time
+
 ### File Size Limits as Agent Performance
 
 File limits aren't just code quality — they're **agent performance optimization**:
@@ -212,6 +228,7 @@ File limits aren't just code quality — they're **agent performance optimizatio
 - Smaller files = fewer ambiguous string matches for edits
 - Smaller files = smaller blast radius from mistakes
 - Language-specific calibration table included
+- **New:** Function-level complexity hints via PostToolUse hook flag long functions automatically
 
 ## Customization
 

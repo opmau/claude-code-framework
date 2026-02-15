@@ -605,6 +605,65 @@ docs: update <document>
 -->
 <!-- auto-generated-end:gotchas -->
 
+### Decision Log
+
+<!-- Record WHY non-obvious choices were made. When revisiting code months later,
+     the "why" is more valuable than the "what". Update this during work, not just
+     during retrospectives.
+
+     Format:
+     - YYYY-MM-DD: [Decision] — [Rationale]
+-->
+
+<!-- auto-generated-start:decision-log -->
+<!-- Example entries (replace with real decisions):
+- 2025-01-15: Chose polling over WebSockets for status updates — deployment
+  target doesn't support persistent connections
+- 2025-01-20: Kept manual SQL over ORM for analytics queries — ORM generated
+  N+1 queries on aggregate views
+- 2025-02-01: Used event bus instead of direct service calls — services need
+  to evolve independently without tight coupling
+-->
+<!-- auto-generated-end:decision-log -->
+
+### Dependency Map
+
+<!-- Track which components depend on which, so Claude understands ripple effects
+     before making changes. Update when architecture changes.
+
+     This is not a full dependency graph — focus on the non-obvious connections
+     that cause surprise breakages. -->
+
+<!-- auto-generated-start:dependency-map -->
+<!-- Example entries (replace with your actual architecture):
+- OrderService → PaymentGateway, InventoryService, NotificationService
+  Changing PaymentGateway interface affects: OrderService, RefundService, AdminDashboard
+- Database migrations affect: all services (coordinate deploys)
+- Auth middleware is consumed by: all API routes (change with extreme caution)
+- Config schema changes require: restart of all services
+-->
+<!-- auto-generated-end:dependency-map -->
+
+### Failure Taxonomy
+
+<!-- Categorize WHY tests fail, not just that they failed. Over time, patterns
+     emerge that inform better rules and test infrastructure.
+
+     Update this during /retro when test failures were encountered. -->
+
+<!-- auto-generated-start:failure-taxonomy -->
+<!-- Example categories (replace with your project's actual patterns):
+- **Type A: State leakage** — Test depends on state from previous test
+  Fix: Better teardown, isolated test fixtures
+- **Type B: Race condition** — Async test has timing-dependent assertion
+  Fix: Deterministic waits, event-based assertions instead of timeouts
+- **Type C: Stale mocks** — Mock doesn't match current interface after refactor
+  Fix: Co-locate mocks with source, update mocks in same PR as interface changes
+- **Type D: Environment-dependent** — Test passes locally, fails in CI
+  Fix: Containerize test environment, avoid filesystem/network assumptions
+-->
+<!-- auto-generated-end:failure-taxonomy -->
+
 ---
 
 ## Feedback Loop & Continuous Improvement
@@ -738,6 +797,10 @@ Rules files in `.claude/rules/` are auto-loaded every session:
 | `testing-protocol.md` | `src/**`, `tests/**` | Test mapping, bug handling |
 | `feedback-loop.md` | All files | Post-session review, living docs |
 | `linear-workflow.md` | All files | Linear integration rules, status mapping, issue-driven development |
+| `anti-patterns.md` | All files | Explicit "don't do this" registry with rationale |
+| `canary-strategy.md` | All files | De-risk cross-cutting changes: apply to one file first |
+| `trust-levels.md` | All files | Progressive autonomy tiers based on test coverage and risk |
+| `complexity-budget.md` | `src/**`, `tests/**` | Measurable code health thresholds (function length, nesting, params) |
 
 <!-- Rules files supplement CLAUDE.md. They're loaded automatically and
      can be path-scoped so they only apply to relevant files. -->
@@ -957,4 +1020,11 @@ Use these phrases when you WANT Claude to challenge you:
 | Modular rules | [Claude Code Capabilities → Rules](#modular-rules) |
 | Agents & memory | [Claude Code Capabilities → Agents](#agents) |
 | Issue tracking (Linear) | [Claude Code Capabilities → Issue Tracking](#issue-tracking-linear) |
+| Decision log | [Domain Knowledge → Decision Log](#decision-log) |
+| Dependency map | [Domain Knowledge → Dependency Map](#dependency-map) |
+| Failure taxonomy | [Domain Knowledge → Failure Taxonomy](#failure-taxonomy) |
+| Anti-patterns | [Modular Rules → anti-patterns.md](#modular-rules) |
+| Canary strategy | [Modular Rules → canary-strategy.md](#modular-rules) |
+| Trust levels | [Modular Rules → trust-levels.md](#modular-rules) |
+| Complexity budget | [Modular Rules → complexity-budget.md](#modular-rules) |
 | Steering phrases | [User Prompts for Steering Claude](#user-prompts-for-steering-claude) |
