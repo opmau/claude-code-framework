@@ -336,6 +336,19 @@ Before modifying any file, Claude should verify:
 [  RETRY_LIMIT = 3            — validated by test_retry_logic]
 ```
 
+### TDD Enforcement (Optional)
+
+For automated test-driven development enforcement, install [tdd-guard](https://github.com/nizos/tdd-guard):
+
+```bash
+npm install -g tdd-guard
+```
+
+When installed, tdd-guard hooks (pre-configured in `.claude/settings.local.json`) will:
+- Block implementation code that doesn't have corresponding failing tests
+- Run linting after edits to guide refactoring
+- Support quick toggle: `tdd-guard on` / `tdd-guard off`
+
 ### Pre-Commit Hook
 
 <!-- Optional but recommended -->
@@ -706,6 +719,10 @@ These hooks enforce rules automatically — Claude doesn't need to remember them
 | `PreToolUse` (Bash) | Warns if committing without running build/tests | `.claude/hooks/pre-commit-check.sh` |
 | `PreCompact` | Re-injects critical rules before context compression | `.claude/hooks/inject-critical-rules.sh` |
 | `Stop` | Periodic reminder to check for doc updates | `.claude/hooks/session-check.sh` |
+| `PreToolUse` (Write/Edit) | TDD enforcement — blocks impl without failing tests (optional, requires [tdd-guard](https://github.com/nizos/tdd-guard)) | `tdd-guard` |
+| `PostToolUse` (Write/Edit) | Lint-based refactoring suggestions after edits (optional, requires tdd-guard) | `tdd-guard` |
+| `UserPromptSubmit` | Quick commands: `tdd-guard on` / `tdd-guard off` (optional, requires tdd-guard) | `tdd-guard` |
+| `SessionStart` | Initializes TDD guard session data (optional, requires tdd-guard) | `tdd-guard` |
 
 Hook configuration is in `.claude/settings.local.json` under the `"hooks"` key.
 
@@ -884,6 +901,7 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── pre-commit-check.sh         # PreToolUse: build/test verification
 │   │   ├── inject-critical-rules.sh    # PreCompact: rule survival
 │   │   └── session-check.sh            # Stop: feedback loop nudge
+│   ├── tdd-guard/                      # TDD enforcement data (optional, auto-managed by tdd-guard)
 │   ├── rules/
 │   │   ├── agent-behavior.md           # Anti-sycophancy, evidence rules
 │   │   ├── scope-guardrails.md         # Change scope limits

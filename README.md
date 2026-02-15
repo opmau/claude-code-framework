@@ -8,7 +8,7 @@ A complete set of templates for configuring Claude Code as a **rigorous engineer
 
 - **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
 - **Skills** — 13 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`)
-- **Hooks** — 5 automated enforcement hooks (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
+- **Hooks** — 5 automated enforcement hooks + optional [tdd-guard](https://github.com/nizos/tdd-guard) TDD enforcement (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
 - **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops)
 - **Agents** — 4 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert)
 - **Ticket system** — Persistent task tracking across sessions with structured templates
@@ -117,6 +117,7 @@ templates/
     │   ├── pre-commit-check.sh         # Warns when committing without build/test
     │   ├── inject-critical-rules.sh    # Preserves rules through context compression
     │   └── session-check.sh            # Periodic feedback loop reminder
+    │   # + tdd-guard hooks (optional, pre-configured in settings.local.json)
     ├── rules/
     │   ├── agent-behavior.md           # Anti-sycophancy, evidence rules
     │   ├── scope-guardrails.md         # Change scope limits
@@ -174,6 +175,7 @@ Rules aren't just documented — they're enforced automatically:
 - **PreToolUse** hook warns when committing without running build/tests
 - **PreCompact** hook re-injects critical rules (including diagnosis rules) before context compression
 - **Stop** hook periodically reminds about documentation updates
+- **Optional:** [tdd-guard](https://github.com/nizos/tdd-guard) hooks enforce TDD discipline automatically — blocks implementation code without failing tests, runs lint-based refactoring suggestions, and supports mid-session toggle (`tdd-guard on` / `tdd-guard off`). Pre-configured in `settings.local.json`; install with `npm install -g tdd-guard`
 
 ### Git Workflow Skills
 
