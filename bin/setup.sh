@@ -144,29 +144,29 @@ if [ ! -d "$TARGET_DIR" ] && [ "$DRY_RUN" = false ]; then
 fi
 
 # --- 1. CLAUDE.md ---
-echo -e "${GREEN}[1/8] CLAUDE.md${NC}"
+echo -e "${GREEN}[1/9] CLAUDE.md${NC}"
 copy_file "$TEMPLATE_DIR/CLAUDE.md" "$TARGET_DIR/CLAUDE.md"
 
 # --- 2. Companion docs ---
 if [ "$INSTALL_DOCS" = true ]; then
-  echo -e "${GREEN}[2/8] Companion docs${NC}"
+  echo -e "${GREEN}[2/9] Companion docs${NC}"
   copy_file "$TEMPLATE_DIR/docs/KNOWN_ISSUES.md" "$TARGET_DIR/docs/KNOWN_ISSUES.md"
   copy_file "$TEMPLATE_DIR/docs/CURRENT_SPRINT.md" "$TARGET_DIR/docs/CURRENT_SPRINT.md"
 else
-  echo -e "${YELLOW}[2/8] Companion docs — skipped${NC}"
+  echo -e "${YELLOW}[2/9] Companion docs — skipped${NC}"
 fi
 
 # --- 3. Skills ---
 if [ "$INSTALL_SKILLS" = true ]; then
-  echo -e "${GREEN}[3/8] Skills${NC}"
+  echo -e "${GREEN}[3/9] Skills${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
 else
-  echo -e "${YELLOW}[3/8] Skills — skipped${NC}"
+  echo -e "${YELLOW}[3/9] Skills — skipped${NC}"
 fi
 
 # --- 4. Hooks ---
 if [ "$INSTALL_HOOKS" = true ]; then
-  echo -e "${GREEN}[4/8] Hooks${NC}"
+  echo -e "${GREEN}[4/9] Hooks${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/hooks" "$TARGET_DIR/.claude/hooks"
   # Make hooks executable
   if [ "$DRY_RUN" = false ]; then
@@ -175,35 +175,45 @@ if [ "$INSTALL_HOOKS" = true ]; then
   # Copy settings template
   copy_file "$TEMPLATE_DIR/.claude/settings.local.json" "$TARGET_DIR/.claude/settings.local.json"
 else
-  echo -e "${YELLOW}[4/8] Hooks — skipped${NC}"
+  echo -e "${YELLOW}[4/9] Hooks — skipped${NC}"
 fi
 
 # --- 5. Rules ---
 if [ "$INSTALL_RULES" = true ]; then
-  echo -e "${GREEN}[5/8] Rules${NC}"
+  echo -e "${GREEN}[5/9] Rules${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/rules" "$TARGET_DIR/.claude/rules"
 else
-  echo -e "${YELLOW}[5/8] Rules — skipped${NC}"
+  echo -e "${YELLOW}[5/9] Rules — skipped${NC}"
 fi
 
 # --- 6. Agents ---
 if [ "$INSTALL_AGENTS" = true ]; then
-  echo -e "${GREEN}[6/8] Agents${NC}"
+  echo -e "${GREEN}[6/9] Agents${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/agents" "$TARGET_DIR/.claude/agents"
 else
-  echo -e "${YELLOW}[6/8] Agents — skipped${NC}"
+  echo -e "${YELLOW}[6/9] Agents — skipped${NC}"
 fi
 
 # --- 7. Tickets ---
 if [ "$INSTALL_TICKETS" = true ]; then
-  echo -e "${GREEN}[7/8] Ticket system${NC}"
+  echo -e "${GREEN}[7/9] Ticket system${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/tickets" "$TARGET_DIR/.claude/tickets"
 else
-  echo -e "${YELLOW}[7/8] Ticket system — skipped${NC}"
+  echo -e "${YELLOW}[7/9] Ticket system — skipped${NC}"
 fi
 
-# --- 8. .claudeignore ---
-echo -e "${GREEN}[8/8] .claudeignore${NC}"
+# --- 8. TDD Guard templates ---
+echo -e "${GREEN}[8/9] TDD Guard templates${NC}"
+if [ -d "$TEMPLATE_DIR/.claude/tdd-guard" ]; then
+  copy_dir "$TEMPLATE_DIR/.claude/tdd-guard" "$TARGET_DIR/.claude/tdd-guard"
+  # Make reporter executable
+  if [ "$DRY_RUN" = false ]; then
+    find "$TARGET_DIR/.claude/tdd-guard" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+  fi
+fi
+
+# --- 9. .claudeignore ---
+echo -e "${GREEN}[9/9] .claudeignore${NC}"
 copy_file "$TEMPLATE_DIR/.claudeignore" "$TARGET_DIR/.claudeignore"
 
 # --- Summary ---

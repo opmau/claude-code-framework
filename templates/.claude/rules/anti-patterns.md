@@ -1,11 +1,11 @@
 # Anti-Pattern Registry
 
-Known mistakes that have caused real problems. These are explicit "don't do this" rules with context on why.
+Explicit "don't do this" rules with context on why. Each entry documents a mistake pattern and its consequences.
 
 ## Code Anti-Patterns
 
 <!-- CUSTOMIZE: Replace these examples with patterns specific to your project.
-     Each entry should document a real mistake that caused real consequences. -->
+     Each entry should document a known mistake pattern and its consequences. -->
 
 - **NEVER use `any` to silence type errors** — find the real type. `any` hides bugs that surface in production.
 - **NEVER catch and swallow errors silently** — always log + rethrow or handle explicitly. Silent failures are the hardest bugs to diagnose.
