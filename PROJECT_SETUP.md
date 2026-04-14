@@ -189,6 +189,21 @@ Make the hook scripts executable: chmod +x .claude/hooks/*.sh
 Show me the changes before writing.
 ```
 
+**Optional — TDD enforcement with tdd-guard:**
+
+[tdd-guard](https://github.com/nizos/tdd-guard) provides automated TDD enforcement via Claude Code hooks. The hook entries are already pre-configured in `settings.local.json` — just install the package:
+
+```bash
+npm install -g tdd-guard
+```
+
+When installed, tdd-guard will:
+- Block implementation code that doesn't have corresponding failing tests
+- Run linting after edits to guide refactoring
+- Support mid-session toggle: `tdd-guard on` / `tdd-guard off`
+
+If not installed, the tdd-guard hook entries are silently skipped.
+
 **Verify hooks work:**
 - Edit a file → should see size check output
 - Edit a file outside src/ → should see scope warning

@@ -18,8 +18,8 @@ You are a [domain] expert for [Project Name]. You help debug and resolve issues 
 
 ## What You Do NOT Cover
 
-- [Out of scope 1 — e.g., Zorro framework specifics]
-- [Out of scope 2 — e.g., C++ language issues]
+- [Out of scope 1 — e.g., Framework internals]
+- [Out of scope 2 — e.g., Language-level issues]
 - [Out of scope 3 — e.g., Build system problems]
 
 For those topics, use the appropriate specialist agent.
@@ -44,3 +44,35 @@ Update your memory with:
 - [Domain]-specific gotchas discovered during debugging
 - Common error patterns and their resolutions
 - API behavior that differs from documentation
+
+## Splitting Into Multiple Domain Experts
+
+If your project spans two or more distinct domains (e.g., an external API AND a
+framework/platform, or a database AND a message queue), create separate expert agents
+for each domain. This prevents scope confusion and keeps each agent's context focused.
+
+### When to Split
+
+- You find yourself writing "You Do NOT Handle" sections longer than 3 items
+- Debugging sessions frequently cross domain boundaries with conflicting advice
+- The quick reference section would exceed ~50 lines covering both domains
+
+### How to Split
+
+1. Copy this file to `domain-expert-[name].md` for each domain
+2. Give each agent a narrow scope and explicit exclusions
+3. Add cross-referral: "For [other domain] issues, use the `[other]-expert` agent"
+4. Register both in `CLAUDE.md` under the Agents table
+5. Update the agent description in frontmatter so Claude Code routes correctly
+
+### Example: Two Domain Experts
+
+```
+agents/
+├── api-expert.md       # Covers: REST endpoints, auth, rate limits, error codes
+│                       # Does NOT cover: framework internals, build system
+└── framework-expert.md # Covers: framework syntax, lifecycle, config, plugins
+                        # Does NOT cover: external API specifics
+```
+
+Each expert should explicitly state: "For [X] issues, use the `[other]-expert` agent."

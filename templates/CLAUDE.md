@@ -48,7 +48,7 @@ This file provides **mandatory rules** for Claude Code when working on [Project 
 <!-- ═══════════════════════════════════════════════════════════════════════
      This section protects the template's structure from being eroded
      over time. Claude may suggest removing "unnecessary" rules — resist
-     this. The rules exist because of real failures in real projects.
+     this. The rules exist because they prevent known AI agent failure modes.
 
      DELETE THIS COMMENT BLOCK after initial setup, but keep the rules.
      ═══════════════════════════════════════════════════════════════════════ -->
@@ -77,20 +77,20 @@ This CLAUDE.md follows a **battle-tested framework**. These meta-rules govern th
 
 ### Why These Rules Exist
 
-Every rule in this file was added because of a **real failure**:
+Every rule in this file addresses a known failure mode of AI coding agents:
 
-| Rule | What Went Wrong Without It |
-|------|---------------------------|
-| File size limits | 2900-line file consumed entire context window, Claude hallucinated |
-| Anti-sycophancy | Claude agreed with a wrong fix that caused financial losses |
-| Evidence-based claims | Claude claimed code existed that didn't, wasting hours debugging |
-| Max 2 fix attempts | Claude made 5 failed fix attempts, each introducing new bugs |
-| Scope guardrails | Asked to fix 1 bug, Claude refactored 8 files and broke 3 things |
-| Feedback loop | Same gotcha was rediscovered 4 times across sessions |
-| Document, don't fix | Bug fix during refactor caused untraceable regression |
-| Diagnosis rules | Speculative fix (timeout increase) ignored log evidence, causing financial damage |
-| Session modes | Constraint stated once was forgotten mid-session, leading to scope violations |
-| Pre-commit verification | Code committed without build/test, deployed broken artifacts |
+| Rule | Failure Mode It Prevents |
+|------|--------------------------|
+| File size limits | Large files exhaust context windows, degrading reasoning quality and causing hallucinations |
+| Anti-sycophancy | Agent agrees with incorrect approaches instead of pushing back, compounding errors |
+| Evidence-based claims | Agent asserts code exists or behaves a certain way without verification, wasting debugging time |
+| Max 2 fix attempts | Unbounded fix-retry loops where each attempt introduces new regressions |
+| Scope guardrails | Uncontrolled scope expansion — a single bug fix becomes a multi-file refactor with cascading breakage |
+| Feedback loop | Hard-won knowledge is lost between sessions, causing the same mistakes to be repeated |
+| Document, don't fix | Mixing bug fixes with refactoring creates untraceable regressions |
+| Diagnosis rules | Speculative fixes applied without evidence, masking root causes or introducing new failures |
+| Session modes | Behavioral constraints stated early in a session are forgotten as context grows |
+| Pre-commit verification | Code committed without build or test verification, shipping broken artifacts |
 
 **If Claude suggests removing a rule, it should explain what replaces the protection that rule provides.**
 
@@ -99,11 +99,11 @@ Every rule in this file was added because of a **real failure**:
 ## Project Overview
 
 <!-- auto-generated-start:overview -->
-- **What:** [One sentence — e.g., "Broker plugin connecting Zorro to Hyperliquid exchange"]
+- **What:** [One sentence — e.g., "REST API backend for customer portal", "CLI tool for data pipeline management"]
 - **Language:** [e.g., C++14, TypeScript, Python 3.11]
 - **Build system:** [e.g., CMake + MSVC 2022, npm, cargo]
 - **Key dependencies:** [e.g., secp256k1, WinHTTP, React 18]
-- **Entry point:** [e.g., `src/api/hl_broker.cpp`, `src/index.ts`]
+- **Entry point:** [e.g., `src/api/main.cpp`, `src/index.ts`]
 <!-- auto-generated-end:overview -->
 
 <!-- auto-generated-start:commands -->
@@ -194,7 +194,7 @@ FORBIDDEN:   ❌ Any reverse dependency (lower importing higher)
 | Defines types/interfaces shared everywhere | Foundation | `types.h`, `models.ts` |
 | Makes network calls or does I/O | Transport | `http_client.cpp`, `db.ts` |
 | Contains business rules or orchestration | Services | `order_service.cpp` |
-| Adapts services to an external interface | API | `broker.cpp`, `routes.ts` |
+| Adapts services to an external interface | API | `app.cpp`, `routes.ts` |
 | Doesn't fit any layer | **Ask the user** | Don't guess |
 
 ### Naming Conventions
@@ -336,6 +336,22 @@ Before modifying any file, Claude should verify:
 [  RETRY_LIMIT = 3            — validated by test_retry_logic]
 ```
 
+### TDD Enforcement (Optional)
+
+For automated test-driven development enforcement, install [tdd-guard](https://github.com/nizos/tdd-guard):
+
+```bash
+npm install -g tdd-guard
+```
+
+When installed, tdd-guard hooks (pre-configured in `.claude/settings.local.json`) will:
+- Block implementation code that doesn't have corresponding failing tests
+- Run linting after edits to guide refactoring
+- Support quick toggle: `tdd-guard on` / `tdd-guard off`
+
+Customize the TDD Guard instructions for your project in `.claude/tdd-guard/data/instructions.md`.
+If you use a custom test runner, adapt `.claude/tdd-guard/reporters/generic-reporter.sh`.
+
 ### Pre-Commit Hook
 
 <!-- Optional but recommended -->
@@ -346,6 +362,59 @@ Before modifying any file, Claude should verify:
 
 # After installation, `git commit` will be blocked if tests fail.
 ```
+
+---
+
+## Integration Testing
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WHY THIS SECTION EXISTS (for Claude Code):
+
+     Unit tests verify components in isolation. Integration tests verify
+     the system works end-to-end against real dependencies. This section
+     documents how to run integration/smoke tests and interpret results.
+
+     Without this, Claude will only run unit tests and miss system-level
+     regressions that unit tests can't catch.
+
+     DELETE THIS SECTION if your project has no integration tests.
+     ═══════════════════════════════════════════════════════════════════════ -->
+
+### Running Integration Tests
+
+<!-- Replace with your project's integration test commands -->
+
+| Test | Command | What It Covers |
+|------|---------|----------------|
+| [Smoke test] | `[command to run smoke tests]` | Basic end-to-end workflow |
+| [Integration suite] | `[command to run integration tests]` | API + database + services |
+
+### Interpreting Results
+
+<!-- Document how to read test output, especially non-obvious exit codes or log locations -->
+
+- **Exit code 0** = all tests passed
+- **Exit code > 0** = failures detected
+- **Log file:** `[path to integration test logs]`
+- After running, **always read the log file** to get detailed PASS/FAIL information
+
+### When to Run Integration Tests
+
+| Situation | Action |
+|-----------|--------|
+| After modifying API or service layer code | Run smoke tests |
+| After modifying data access or transport layer | Run integration suite |
+| Before merging to main/production branch | Run ALL integration tests |
+| Debugging a hypothesis about system behavior | Write a minimal test script, run it |
+| Verifying a fix works end-to-end | Build → Deploy → Smoke test |
+
+### Smoke Test Triage
+
+When integration tests fail, use `/smoke-test` to:
+1. Parse the log for all failures
+2. Diagnose each against source code
+3. Classify severity (Critical / Medium / Low)
+4. Create tracking issues for new findings
 
 ---
 
@@ -442,8 +511,8 @@ If the **2nd** fix attempt fails:
      WHY THIS EXISTS:
 
      The most common debugging failure is Claude proposing speculative fixes
-     without evidence. In production projects (especially trading), an
-     unfounded fix can cause financial damage. These rules enforce systematic
+     without evidence. In production projects, an
+     unfounded fix can cause cascading failures. These rules enforce systematic
      diagnosis before any fix is attempted.
      ═══════════════════════════════════════════════════════════════════════ -->
 
@@ -566,8 +635,8 @@ docs: update <document>
 
 ## Domain Knowledge & Gotchas
 
-<!-- This is your highest-value-per-token section. Encode hard-won lessons
-     that would take Claude (or a human) hours to rediscover.
+<!-- This is your highest-value-per-token section. Encode project-specific
+     knowledge that would take Claude (or a new developer) hours to rediscover.
 
      Use this consistent template for each gotcha: -->
 
@@ -591,6 +660,65 @@ docs: update <document>
      ### API Idiosyncrasies
 -->
 <!-- auto-generated-end:gotchas -->
+
+### Decision Log
+
+<!-- Record WHY non-obvious choices were made. When revisiting code months later,
+     the "why" is more valuable than the "what". Update this during work, not just
+     during retrospectives.
+
+     Format:
+     - YYYY-MM-DD: [Decision] — [Rationale]
+-->
+
+<!-- auto-generated-start:decision-log -->
+<!-- Example entries (replace with real decisions):
+- 2025-01-15: Chose polling over WebSockets for status updates — deployment
+  target doesn't support persistent connections
+- 2025-01-20: Kept manual SQL over ORM for analytics queries — ORM generated
+  N+1 queries on aggregate views
+- 2025-02-01: Used event bus instead of direct service calls — services need
+  to evolve independently without tight coupling
+-->
+<!-- auto-generated-end:decision-log -->
+
+### Dependency Map
+
+<!-- Track which components depend on which, so Claude understands ripple effects
+     before making changes. Update when architecture changes.
+
+     This is not a full dependency graph — focus on the non-obvious connections
+     that cause surprise breakages. -->
+
+<!-- auto-generated-start:dependency-map -->
+<!-- Example entries (replace with your actual architecture):
+- OrderService → PaymentGateway, InventoryService, NotificationService
+  Changing PaymentGateway interface affects: OrderService, RefundService, AdminDashboard
+- Database migrations affect: all services (coordinate deploys)
+- Auth middleware is consumed by: all API routes (change with extreme caution)
+- Config schema changes require: restart of all services
+-->
+<!-- auto-generated-end:dependency-map -->
+
+### Failure Taxonomy
+
+<!-- Categorize WHY tests fail, not just that they failed. Over time, patterns
+     emerge that inform better rules and test infrastructure.
+
+     Update this during /retro when test failures were encountered. -->
+
+<!-- auto-generated-start:failure-taxonomy -->
+<!-- Example categories (replace with your project's actual patterns):
+- **Type A: State leakage** — Test depends on state from previous test
+  Fix: Better teardown, isolated test fixtures
+- **Type B: Race condition** — Async test has timing-dependent assertion
+  Fix: Deterministic waits, event-based assertions instead of timeouts
+- **Type C: Stale mocks** — Mock doesn't match current interface after refactor
+  Fix: Co-locate mocks with source, update mocks in same PR as interface changes
+- **Type D: Environment-dependent** — Test passes locally, fails in CI
+  Fix: Containerize test environment, avoid filesystem/network assumptions
+-->
+<!-- auto-generated-end:failure-taxonomy -->
 
 ---
 
@@ -685,6 +813,8 @@ Custom slash commands available in this project:
 | `/session-mode` | Set session operating mode (debug/refactor/feature) | `.claude/skills/session-mode/SKILL.md` |
 | `/diagnose` | Structured differential diagnosis for complex bugs | `.claude/skills/diagnose/SKILL.md` |
 | `/fix-issue` | Pick a bug from Linear, fix it, verify, update issue | `.claude/skills/fix-issue/SKILL.md` |
+| `/smoke-test` | Diagnose integration test logs, classify failures, create issues | `.claude/skills/smoke-test/SKILL.md` |
+| `/create-ticket` | Create a local ticket for task tracking | `.claude/skills/create-ticket/SKILL.md` |
 | `/linear-sync` | Generate local snapshot of Linear issues | `.claude/skills/linear-sync/SKILL.md` |
 | `/linear-create` | Create a new issue in Linear | `.claude/skills/linear-create/SKILL.md` |
 | `/linear-triage` | Triage, prioritize, and groom Linear issues | `.claude/skills/linear-triage/SKILL.md` |
@@ -706,6 +836,10 @@ These hooks enforce rules automatically — Claude doesn't need to remember them
 | `PreToolUse` (Bash) | Warns if committing without running build/tests | `.claude/hooks/pre-commit-check.sh` |
 | `PreCompact` | Re-injects critical rules before context compression | `.claude/hooks/inject-critical-rules.sh` |
 | `Stop` | Periodic reminder to check for doc updates | `.claude/hooks/session-check.sh` |
+| `PreToolUse` (Write/Edit) | TDD enforcement — blocks impl without failing tests (optional, requires [tdd-guard](https://github.com/nizos/tdd-guard)) | `tdd-guard` |
+| `PostToolUse` (Write/Edit) | Lint-based refactoring suggestions after edits (optional, requires tdd-guard) | `tdd-guard` |
+| `UserPromptSubmit` | Quick commands: `tdd-guard on` / `tdd-guard off` (optional, requires tdd-guard) | `tdd-guard` |
+| `SessionStart` | Initializes TDD guard session data (optional, requires tdd-guard) | `tdd-guard` |
 
 Hook configuration is in `.claude/settings.local.json` under the `"hooks"` key.
 
@@ -721,6 +855,10 @@ Rules files in `.claude/rules/` are auto-loaded every session:
 | `testing-protocol.md` | `src/**`, `tests/**` | Test mapping, bug handling |
 | `feedback-loop.md` | All files | Post-session review, living docs |
 | `linear-workflow.md` | All files | Linear integration rules, status mapping, issue-driven development |
+| `anti-patterns.md` | All files | Explicit "don't do this" registry with rationale |
+| `canary-strategy.md` | All files | De-risk cross-cutting changes: apply to one file first |
+| `trust-levels.md` | All files | Progressive autonomy tiers based on test coverage and risk |
+| `complexity-budget.md` | `src/**`, `tests/**` | Measurable code health thresholds (function length, nesting, params) |
 
 <!-- Rules files supplement CLAUDE.md. They're loaded automatically and
      can be path-scoped so they only apply to relevant files. -->
@@ -873,6 +1011,8 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── session-mode/SKILL.md       # /session-mode command
 │   │   ├── diagnose/SKILL.md           # /diagnose command
 │   │   ├── fix-issue/SKILL.md          # /fix-issue command
+│   │   ├── smoke-test/SKILL.md        # /smoke-test command
+│   │   ├── create-ticket/SKILL.md     # /create-ticket command
 │   │   ├── linear-sync/SKILL.md       # /linear-sync command
 │   │   ├── linear-create/SKILL.md     # /linear-create command
 │   │   ├── linear-triage/SKILL.md     # /linear-triage command
@@ -884,6 +1024,7 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── pre-commit-check.sh         # PreToolUse: build/test verification
 │   │   ├── inject-critical-rules.sh    # PreCompact: rule survival
 │   │   └── session-check.sh            # Stop: feedback loop nudge
+│   ├── tdd-guard/                      # TDD enforcement data (optional, auto-managed by tdd-guard)
 │   ├── rules/
 │   │   ├── agent-behavior.md           # Anti-sycophancy, evidence rules
 │   │   ├── scope-guardrails.md         # Change scope limits
@@ -897,6 +1038,10 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── qa-tester.md                # Test writing and QA (Sonnet)
 │   │   ├── [domain]-expert.md          # Domain specialist (Opus)
 │   │   └── linear-pm.md               # Linear product management (Opus)
+│   └── tickets/
+│       ├── README.md                   # Ticket system guide
+│       ├── ticket-list.md              # Centralized task index
+│       └── TICKET-000-template.md      # Ticket template
 ├── docs/
 │   ├── CURRENT_SPRINT.md               # Active work status (ephemeral)
 │   ├── LINEAR_SNAPSHOT.md              # Read-only Linear issue cache (auto-generated)
@@ -928,6 +1073,9 @@ Use these phrases when you WANT Claude to challenge you:
 | How to split large files | [File Size Limits → Splitting Strategies](#splitting-strategies) |
 | Scope guardrails | [Scope of Change Guardrails](#scope-of-change-guardrails) |
 | Test mapping | [Testing Protocol](#testing-protocol) |
+| Integration tests | [Integration Testing](#integration-testing) |
+| Smoke test triage | [Integration Testing → Smoke Test Triage](#smoke-test-triage) |
+| Local tickets | [Ticket System](#ticket-system) (use `/create-ticket`) |
 | Pushback & rigor rules | [Agent Behavior Rules → Critical Thinking](#critical-thinking--constructive-pushback) |
 | Diagnosis discipline | [Agent Behavior Rules → Diagnosis Rules](#diagnosis-rules) |
 | Session modes | [Session Management](#session-management) (use `/session-mode`) |
@@ -939,4 +1087,11 @@ Use these phrases when you WANT Claude to challenge you:
 | Modular rules | [Claude Code Capabilities → Rules](#modular-rules) |
 | Agents & memory | [Claude Code Capabilities → Agents](#agents) |
 | Issue tracking (Linear) | [Claude Code Capabilities → Issue Tracking](#issue-tracking-linear) |
+| Decision log | [Domain Knowledge → Decision Log](#decision-log) |
+| Dependency map | [Domain Knowledge → Dependency Map](#dependency-map) |
+| Failure taxonomy | [Domain Knowledge → Failure Taxonomy](#failure-taxonomy) |
+| Anti-patterns | [Modular Rules → anti-patterns.md](#modular-rules) |
+| Canary strategy | [Modular Rules → canary-strategy.md](#modular-rules) |
+| Trust levels | [Modular Rules → trust-levels.md](#modular-rules) |
+| Complexity budget | [Modular Rules → complexity-budget.md](#modular-rules) |
 | Steering phrases | [User Prompts for Steering Claude](#user-prompts-for-steering-claude) |

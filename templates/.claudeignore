@@ -78,6 +78,9 @@ logs/
 *.mp4
 *.mp3
 
+# --- TDD Guard (internal data, auto-managed) ---
+.claude/tdd-guard/data/
+
 # --- Docker ---
 .docker/
 

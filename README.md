@@ -7,29 +7,30 @@ A project framework for Claude Code that enforces engineering discipline, preven
 A complete set of templates for configuring Claude Code as a **rigorous engineering partner** rather than a compliant assistant. Includes:
 
 - **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
-- **Skills** — 17 slash commands (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`, `/linear-create`, `/linear-sync`, `/linear-triage`, `/linear-sprint`, `/linear-update`)
-- **Hooks** — 5 automated enforcement hooks (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
-- **Rules** — Modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, Linear workflow)
+- **Skills** — 20 slash commands: 15 core (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`, `/smoke-test`) + 5 Linear integration (`/linear-sync`, `/linear-create`, `/linear-triage`, `/linear-sprint`, `/linear-update`)
+- **Hooks** — 5 automated enforcement hooks + optional [tdd-guard](https://github.com/nizos/tdd-guard) TDD enforcement (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
+- **Rules** — 10 modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, anti-patterns, canary strategy, trust levels, complexity budget)
 - **Agents** — 5 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert, Linear PM)
+- **Ticket system** — Persistent task tracking across sessions with structured templates
 - **Issue tracking** — Linear as single source of truth with local snapshot cache (`docs/LINEAR_SNAPSHOT.md`)
 - **Setup tooling** — Automated setup and update scripts, comment stripping for production, `.claudeignore` template
 
 ## Why This Exists
 
-These patterns were developed during a real production project (a financial trading plugin) where AI agent mistakes had real consequences. Every rule exists because of a specific failure:
+Every rule in this framework exists because of a specific failure mode observed in production use of AI coding agents. These are not theoretical — they address real categories of problems that occur when LLM agents operate without structured constraints.
 
-| Rule | What Went Wrong Without It |
-|------|---------------------------|
-| File size limits | 2900-line file consumed the entire context window, Claude hallucinated |
-| Anti-sycophancy rules | Claude agreed with a wrong fix that caused financial losses |
-| Evidence-based claims | Claude claimed code existed that didn't, wasting hours debugging |
-| Max 2 fix attempts | Claude made 5 failed fix attempts, each introducing new bugs |
-| Scope guardrails | Asked to fix 1 bug, Claude refactored 8 files and broke 3 things |
-| Feedback loop | Same gotcha was rediscovered 4 times across sessions |
-| PreCompact hook | Critical rules were lost during context compression, Claude "forgot" constraints |
-| Diagnosis rules | Speculative fix ignored log evidence, causing financial damage |
-| Session modes | Constraint stated once was forgotten mid-session, causing scope violations |
-| Pre-commit hook | Code committed without build/test verification, deploying broken artifacts |
+| Rule | Failure Mode It Prevents |
+|------|--------------------------|
+| File size limits | Large files exhaust context windows, degrading reasoning quality and causing hallucinations |
+| Anti-sycophancy rules | Agent agrees with incorrect approaches instead of pushing back, compounding errors |
+| Evidence-based claims | Agent asserts code exists or behaves a certain way without verification, wasting debugging time |
+| Max fix attempts | Unbounded fix-retry loops where each attempt introduces new regressions |
+| Scope guardrails | Uncontrolled scope expansion — a single bug fix becomes a multi-file refactor with cascading breakage |
+| Feedback loop | Hard-won knowledge is lost between sessions, causing the same mistakes to be repeated |
+| PreCompact hook | Critical rules are dropped during context compression, effectively removing constraints mid-session |
+| Diagnosis rules | Speculative fixes applied without evidence, masking root causes or introducing new failures |
+| Session modes | Behavioral constraints stated early in a session are forgotten as context grows |
+| Pre-commit hook | Code committed without build or test verification, shipping broken artifacts |
 
 ## Quick Start
 
@@ -50,6 +51,16 @@ cp -r claude-code-framework/templates/docs your-project/docs
 ```
 
 **Prerequisites (for hooks):** bash 4+, `jq`. On Windows, use Git Bash or WSL. See [Platform Notes](PROJECT_SETUP.md#platform-notes).
+
+**Updating an existing project:**
+
+```bash
+# Pull latest framework changes without overwriting your CLAUDE.md, docs/, or tickets/
+bash claude-code-framework/bin/update.sh /path/to/your-project
+
+# Preview what would change first
+bash claude-code-framework/bin/update.sh /path/to/your-project --dry-run
+```
 
 ### 2. Bootstrap with Claude Code
 
@@ -124,6 +135,8 @@ templates/
     │   ├── session-mode/SKILL.md       # /session-mode — set session constraints
     │   ├── diagnose/SKILL.md           # /diagnose — structured bug investigation
     │   ├── fix-issue/SKILL.md          # /fix-issue — fix tracked Linear issues
+    │   ├── smoke-test/SKILL.md         # /smoke-test — integration test log triage
+    │   ├── create-ticket/SKILL.md      # /create-ticket — local task tracking
     │   ├── linear-create/SKILL.md      # /linear-create — create Linear issues
     │   ├── linear-sync/SKILL.md        # /linear-sync — generate local snapshot
     │   ├── linear-triage/SKILL.md      # /linear-triage — triage and groom issues
@@ -135,19 +148,31 @@ templates/
     │   ├── pre-commit-check.sh         # Warns when committing without build/test
     │   ├── inject-critical-rules.sh    # Preserves rules through context compression
     │   └── session-check.sh            # Periodic feedback loop reminder
+    │   # + tdd-guard hooks (optional, pre-configured in settings.local.json)
+    ├── tdd-guard/                      # TDD enforcement templates (optional)
+    │   ├── data/instructions.md        # Project-specific test instructions
+    │   └── reporters/generic-reporter.sh  # Test output → TDD Guard JSON
     ├── rules/
     │   ├── agent-behavior.md           # Anti-sycophancy, evidence rules
     │   ├── scope-guardrails.md         # Change scope limits
     │   ├── file-size-limits.md         # Size limits (path-scoped to src/)
     │   ├── testing-protocol.md         # Test mapping, bug handling
     │   ├── linear-workflow.md          # Linear integration rules
-    │   └── feedback-loop.md            # Post-session review triggers
+    │   ├── feedback-loop.md            # Post-session review triggers
+    │   ├── anti-patterns.md            # Explicit "don't do this" registry
+    │   ├── canary-strategy.md          # De-risk cross-cutting changes
+    │   ├── trust-levels.md             # Progressive autonomy by module risk
+    │   └── complexity-budget.md        # Code health thresholds
     ├── agents/
     │   ├── code-reviewer.md            # Pre-commit reviewer with memory
     │   ├── planner.md                  # Task planning and breakdown
     │   ├── qa-tester.md                # Test writing and QA
     │   ├── domain-expert.md            # Domain specialist with memory
     │   └── linear-pm.md               # Linear PM — sprint planning, health checks
+    └── tickets/
+        ├── README.md                   # Ticket system guide
+        ├── ticket-list.md              # Centralized task index
+        └── TICKET-000-template.md      # Ticket template
 ```
 
 ## Key Features
@@ -177,7 +202,8 @@ Complete lifecycle from discovery to fix:
 
 - `/document-bug` — log bugs as Linear issues without touching source code
 - `/diagnose` — structured differential diagnosis with multiple hypotheses
-- `/fix-issue` — pick a tracked bug from Linear, fix it, verify, update the issue
+- `/fix-issue` — pick a tracked bug, fix it, verify, update issue tracking
+- `/smoke-test` — analyze integration test logs, classify failures by severity, batch-create issues
 
 ### Automated Enforcement via Hooks
 
@@ -188,6 +214,7 @@ Rules aren't just documented — they're enforced automatically:
 - **PreToolUse** hook warns when committing without running build/tests
 - **PreCompact** hook re-injects critical rules (including diagnosis rules) before context compression
 - **Stop** hook periodically reminds about documentation updates
+- **Optional:** [tdd-guard](https://github.com/nizos/tdd-guard) hooks enforce TDD discipline automatically — blocks implementation code without failing tests, supports mid-session toggle (`tdd-guard on` / `tdd-guard off`). Pre-configured in `settings.local.json`; install with `npm install -g tdd-guard`
 
 ### Git Workflow Skills
 
@@ -195,17 +222,25 @@ Built-in slash commands for clean git workflows:
 
 - `/commit` — generates conventional commit messages from staged changes
 - `/create-pr` — creates PRs with structured summary, changes list, and test plan
+- `/create-ticket` — tracks tasks persistently across sessions
 - `/create-skill` — meta-skill to generate new custom skills
+- `/linear-sync`, `/linear-create`, `/linear-triage`, `/linear-sprint`, `/linear-update` — full Linear issue tracking integration
+
+### Integration Testing
+
+- CLAUDE.md includes an **Integration Testing** section template for documenting smoke test commands and log interpretation
+- `/smoke-test` skill analyzes integration test logs, diagnoses failures against source code, and batch-creates issues
+- Integration test results feed into the structured bug workflow (`/document-bug` → `/fix-issue`)
 
 ### Specialized Agents
 
-Four agents with persistent memory for different roles:
+Five agents with persistent memory for different roles:
 
 - **code-reviewer** — pre-commit review against CLAUDE.md rules (Opus)
 - **planner** — breaks down complex tasks before implementation (Opus)
 - **qa-tester** — writes tests, validates coverage, investigates failures (Opus)
-- **domain-expert** — deep expertise for domain-specific debugging (Opus)
-- **linear-pm** — sprint planning, velocity analysis, project health (Opus)
+- **domain-expert** — deep expertise for domain-specific debugging (Opus) — supports splitting into multiple domain experts
+- **linear-pm** — sprint planning, velocity analysis, project health, release readiness (Opus)
 
 ### Feedback Loop
 
