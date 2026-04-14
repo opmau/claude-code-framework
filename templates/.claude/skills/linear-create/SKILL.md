@@ -4,7 +4,7 @@ description: Create a new issue in Linear. Use when the user says "create linear
 argument-hint: "<issue title>"
 user-invocable: true
 allowed-tools: Bash, Read, Write, Glob, Grep
-model: sonnet
+model: haiku
 ---
 
 # /linear-create — Create a Linear issue

@@ -12,8 +12,8 @@ A complete set of templates for configuring Claude Code as a **rigorous engineer
 - **Rules** — 10 modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, anti-patterns, canary strategy, trust levels, complexity budget)
 - **Agents** — 5 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert, Linear PM)
 - **Ticket system** — Persistent task tracking across sessions with structured templates
+- **Issue tracking** — Linear as single source of truth with local snapshot cache (`docs/LINEAR_SNAPSHOT.md`)
 - **Setup tooling** — Automated setup and update scripts, comment stripping for production, `.claudeignore` template
-- **Companion docs** — KNOWN_ISSUES.md, CURRENT_SPRINT.md templates
 
 ## Why This Exists
 
@@ -92,20 +92,34 @@ Read CLAUDE.md and answer:
 
 See [PROJECT_SETUP.md](PROJECT_SETUP.md) for the full 11-step setup guide.
 
+## Updating Existing Projects
+
+When the framework gets new skills, bug fixes, or rule improvements, update your project:
+
+```bash
+# Preview what would change
+bash claude-code-framework/bin/update.sh /path/to/your-project --dry-run
+
+# Apply updates
+bash claude-code-framework/bin/update.sh /path/to/your-project
+```
+
+The update script overwrites **framework files only** (skills, rules, hooks, agents, settings) and never touches your project-specific files (`CLAUDE.md`, `docs/`, `.linear.toml`). It also removes skills or rules that were deleted from the framework.
+
 ## What's Included
 
 ```
 bin/
 ├── setup.sh                            # Automated project setup script
-├── update.sh                           # Update framework in existing projects
+├── update.sh                           # Update framework files in existing projects
 └── strip-comments.sh                   # Strip coaching comments for production
 
 templates/
 ├── CLAUDE.md                           # Main agent rules template
 ├── .claudeignore                       # Files Claude should skip
 ├── docs/
-│   ├── KNOWN_ISSUES.md                 # Bug tracking template
-│   └── CURRENT_SPRINT.md               # Sprint state template
+│   ├── CURRENT_SPRINT.md              # Sprint state template
+│   └── LINEAR_SNAPSHOT.md             # Auto-generated Linear cache
 └── .claude/
     ├── settings.local.json             # Hook registration (pre-configured)
     ├── skills/
@@ -116,13 +130,18 @@ templates/
     │   ├── retro/SKILL.md              # /retro — session retrospective
     │   ├── commit/SKILL.md             # /commit — conventional commit generation
     │   ├── create-pr/SKILL.md          # /create-pr — structured PR creation
-    │   ├── create-ticket/SKILL.md      # /create-ticket — task tracking
     │   ├── create-skill/SKILL.md       # /create-skill — generate new skills
-    │   ├── document-bug/SKILL.md       # /document-bug — log bugs without fixing
+    │   ├── document-bug/SKILL.md       # /document-bug — log bugs in Linear
     │   ├── session-mode/SKILL.md       # /session-mode — set session constraints
     │   ├── diagnose/SKILL.md           # /diagnose — structured bug investigation
-    │   ├── fix-issue/SKILL.md          # /fix-issue — fix tracked known issues
-    │   └── smoke-test/SKILL.md         # /smoke-test — integration test log triage
+    │   ├── fix-issue/SKILL.md          # /fix-issue — fix tracked Linear issues
+    │   ├── smoke-test/SKILL.md         # /smoke-test — integration test log triage
+    │   ├── create-ticket/SKILL.md      # /create-ticket — local task tracking
+    │   ├── linear-create/SKILL.md      # /linear-create — create Linear issues
+    │   ├── linear-sync/SKILL.md        # /linear-sync — generate local snapshot
+    │   ├── linear-triage/SKILL.md      # /linear-triage — triage and groom issues
+    │   ├── linear-sprint/SKILL.md      # /linear-sprint — sprint/cycle management
+    │   └── linear-update/SKILL.md      # /linear-update — update issue status
     ├── hooks/
     │   ├── check-file-size.sh          # Warns when files exceed size limits
     │   ├── check-scope.sh              # Warns when editing out-of-scope files + session mode
@@ -130,11 +149,15 @@ templates/
     │   ├── inject-critical-rules.sh    # Preserves rules through context compression
     │   └── session-check.sh            # Periodic feedback loop reminder
     │   # + tdd-guard hooks (optional, pre-configured in settings.local.json)
+    ├── tdd-guard/                      # TDD enforcement templates (optional)
+    │   ├── data/instructions.md        # Project-specific test instructions
+    │   └── reporters/generic-reporter.sh  # Test output → TDD Guard JSON
     ├── rules/
     │   ├── agent-behavior.md           # Anti-sycophancy, evidence rules
     │   ├── scope-guardrails.md         # Change scope limits
     │   ├── file-size-limits.md         # Size limits (path-scoped to src/)
     │   ├── testing-protocol.md         # Test mapping, bug handling
+    │   ├── linear-workflow.md          # Linear integration rules
     │   ├── feedback-loop.md            # Post-session review triggers
     │   ├── anti-patterns.md            # Explicit "don't do this" registry
     │   ├── canary-strategy.md          # De-risk cross-cutting changes
@@ -145,7 +168,7 @@ templates/
     │   ├── planner.md                  # Task planning and breakdown
     │   ├── qa-tester.md                # Test writing and QA
     │   ├── domain-expert.md            # Domain specialist with memory
-    │   └── linear-pm.md               # Linear product management (Opus)
+    │   └── linear-pm.md               # Linear PM — sprint planning, health checks
     └── tickets/
         ├── README.md                   # Ticket system guide
         ├── ticket-list.md              # Centralized task index
@@ -169,17 +192,15 @@ Claude's default is to agree with users. In engineering, this creates blind spot
 
 Lock sessions into specific operating modes to prevent drift:
 
-- `/session-mode document-only` — audit and document, no source changes
 - `/session-mode debug` — focused bug fixing, no refactoring
 - `/session-mode refactor` — restructure code, document bugs found but don't fix them
 - `/session-mode feature` — build new functionality with a plan
-- `/session-mode review` — read-only code assessment
 
 ### Structured Bug Workflow
 
 Complete lifecycle from discovery to fix:
 
-- `/document-bug` — log bugs without touching source code (enforces "document, don't fix")
+- `/document-bug` — log bugs as Linear issues without touching source code
 - `/diagnose` — structured differential diagnosis with multiple hypotheses
 - `/fix-issue` — pick a tracked bug, fix it, verify, update issue tracking
 - `/smoke-test` — analyze integration test logs, classify failures by severity, batch-create issues
@@ -188,12 +209,12 @@ Complete lifecycle from discovery to fix:
 
 Rules aren't just documented — they're enforced automatically:
 
-- **PostToolUse** hook checks file size and function complexity after every edit
+- **PostToolUse** hook checks file size after every edit
 - **PreToolUse** hook warns about out-of-scope changes and enforces session mode constraints
 - **PreToolUse** hook warns when committing without running build/tests
 - **PreCompact** hook re-injects critical rules (including diagnosis rules) before context compression
 - **Stop** hook periodically reminds about documentation updates
-- **Optional:** [tdd-guard](https://github.com/nizos/tdd-guard) hooks enforce TDD discipline automatically — blocks implementation code without failing tests, runs lint-based refactoring suggestions, and supports mid-session toggle (`tdd-guard on` / `tdd-guard off`). Pre-configured in `settings.local.json`; install with `npm install -g tdd-guard`
+- **Optional:** [tdd-guard](https://github.com/nizos/tdd-guard) hooks enforce TDD discipline automatically — blocks implementation code without failing tests, supports mid-session toggle (`tdd-guard on` / `tdd-guard off`). Pre-configured in `settings.local.json`; install with `npm install -g tdd-guard`
 
 ### Git Workflow Skills
 
@@ -215,9 +236,9 @@ Built-in slash commands for clean git workflows:
 
 Five agents with persistent memory for different roles:
 
-- **code-reviewer** — pre-commit review against CLAUDE.md rules (Haiku, fast)
+- **code-reviewer** — pre-commit review against CLAUDE.md rules (Opus)
 - **planner** — breaks down complex tasks before implementation (Opus)
-- **qa-tester** — writes tests, validates coverage, investigates failures (Sonnet)
+- **qa-tester** — writes tests, validates coverage, investigates failures (Opus)
 - **domain-expert** — deep expertise for domain-specific debugging (Opus) — supports splitting into multiple domain experts
 - **linear-pm** — sprint planning, velocity analysis, project health, release readiness (Opus)
 
@@ -230,18 +251,6 @@ The framework builds continuous improvement into every session:
 - Retrospective triggers for bugs, failed fixes, and incidents
 - Agent memory persistence (all agents learn over time)
 
-### Proactive Self-Improvement
-
-Beyond learning from failures, the framework includes proactive mechanisms that prevent problems before they happen:
-
-- **Anti-pattern registry** — explicit "don't do this" rules with rationale, so mistakes aren't repeated
-- **Canary strategy** — for cross-cutting changes, apply to one file first, verify, then apply broadly
-- **Trust levels** — progressive autonomy tiers match verification effort to module risk
-- **Complexity budget** — measurable thresholds (function length, nesting depth, parameter count) that trigger refactoring
-- **Decision log** — records *why* choices were made, not just what changed (in CLAUDE.md)
-- **Dependency map** — tracks non-obvious component relationships so Claude understands ripple effects
-- **Failure taxonomy** — categorizes test failure root causes to improve test infrastructure over time
-
 ### File Size Limits as Agent Performance
 
 File limits aren't just code quality — they're **agent performance optimization**:
@@ -250,7 +259,6 @@ File limits aren't just code quality — they're **agent performance optimizatio
 - Smaller files = fewer ambiguous string matches for edits
 - Smaller files = smaller blast radius from mistakes
 - Language-specific calibration table included
-- **New:** Function-level complexity hints via PostToolUse hook flag long functions automatically
 
 ## Customization
 

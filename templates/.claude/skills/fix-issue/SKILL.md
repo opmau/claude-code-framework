@@ -4,7 +4,7 @@ description: Pick a bug from Linear, fix it test-first, verify, and update. Use 
 argument-hint: "<ENG-NNN or description>"
 user-invocable: true
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 # /fix-issue — Fix a tracked Linear issue (test-driven)

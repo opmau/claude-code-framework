@@ -1,7 +1,7 @@
 ---
 name: code-reviewer
 description: Self-review agent for proposed changes. Checks against CLAUDE.md patterns before commits. Use this before every commit.
-model: haiku
+model: opus
 memory: project
 ---
 

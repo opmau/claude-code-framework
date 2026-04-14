@@ -2,33 +2,17 @@
 # ============================================================================
 # Claude Code Project Framework — Update Script
 # ============================================================================
-# Updates framework files in an existing project while preserving
-# project-specific customizations.
-#
-# UPDATES (overwrites):
-#   .claude/skills/     — all skill definitions
-#   .claude/rules/      — all rule files
-#   .claude/hooks/      — all hook scripts
-#   .claude/agents/     — all agent definitions
-#   .claude/settings.local.json — hook registration
-#   .claude/tdd-guard/  — TDD guard templates
-#   .claudeignore       — ignore patterns
-#
-# PRESERVES (never overwrites):
-#   CLAUDE.md           — project-specific rules and configuration
-#   docs/               — project documentation
-#   .claude/tickets/    — local ticket data
-#   .claude/agent-memory/ — agent persistent memory
+# Updates framework files in an existing project without touching
+# project-specific customizations (CLAUDE.md, docs/, .linear.toml).
 #
 # Usage:
 #   bash update.sh <target-project-dir> [options]
 #
 # Options:
-#   --dry-run      Show what would be changed without doing it
-#   --force        Skip confirmation prompt
+#   --dry-run      Show what would be updated without doing it
 #
 # Prerequisites:
-#   - bash 4+
+#   - bash 4+ (macOS: brew install bash)
 #   - Git Bash or WSL on Windows
 # ============================================================================
 
@@ -41,63 +25,98 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
-# --- Resolve template directory ---
+# --- Resolve paths ---
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-TEMPLATE_DIR="$(cd "$SCRIPT_DIR/../templates" && pwd)"
+REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+TEMPLATE_DIR="$REPO_DIR/templates"
 
 # --- Defaults ---
 DRY_RUN=false
-FORCE=false
 
 # --- Parse arguments ---
 TARGET_DIR=""
 for arg in "$@"; do
   case "$arg" in
     --dry-run)  DRY_RUN=true ;;
-    --force)    FORCE=true ;;
     -*)         echo -e "${RED}Unknown option: $arg${NC}"; exit 1 ;;
     *)          TARGET_DIR="$arg" ;;
   esac
 done
 
 if [ -z "$TARGET_DIR" ]; then
-  echo -e "${RED}Usage: bash update.sh <target-project-dir> [--dry-run] [--force]${NC}"
+  echo -e "${RED}Usage: bash update.sh <target-project-dir> [--dry-run]${NC}"
   exit 1
 fi
 
-# Resolve to absolute path
-TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd || echo "$TARGET_DIR")"
+# --- Validate ---
+if [ ! -d "$TEMPLATE_DIR" ]; then
+  echo -e "${RED}ERROR: Template directory not found at $TEMPLATE_DIR${NC}"
+  exit 1
+fi
 
-# --- Validate target ---
+if [ ! -d "$TARGET_DIR" ]; then
+  echo -e "${RED}ERROR: Target project directory does not exist: $TARGET_DIR${NC}"
+  exit 1
+fi
+
 if [ ! -d "$TARGET_DIR/.claude" ]; then
-  echo -e "${RED}ERROR: $TARGET_DIR does not appear to be a framework project (.claude/ not found)${NC}"
-  echo -e "Use ${BLUE}setup.sh${NC} for first-time installation."
+  echo -e "${RED}ERROR: No .claude/ directory found in $TARGET_DIR${NC}"
+  echo "This doesn't look like a project using the framework."
+  echo "Use bin/setup.sh for initial installation."
   exit 1
 fi
 
-# --- Helper functions ---
+TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
+
+# --- Framework version ---
+FRAMEWORK_VERSION="unknown"
+if command -v git &>/dev/null && [ -d "$REPO_DIR/.git" ]; then
+  FRAMEWORK_VERSION=$(cd "$REPO_DIR" && git log -1 --format="%h (%cd)" --date=short 2>/dev/null || echo "unknown")
+fi
+
+# --- Counters ---
+UPDATED=0
+ADDED=0
+UNCHANGED=0
+REMOVED=0
+
+# --- Helper: update a single file ---
 update_file() {
   local src="$1"
   local dst="$2"
 
   if [ "$DRY_RUN" = true ]; then
     if [ -f "$dst" ]; then
-      if diff -q "$src" "$dst" >/dev/null 2>&1; then
-        echo -e "  ${BLUE}[unchanged]${NC} $dst"
+      if diff -q "$src" "$dst" &>/dev/null; then
+        UNCHANGED=$((UNCHANGED + 1))
       else
-        echo -e "  ${YELLOW}[would update]${NC} $dst"
+        echo -e "  ${BLUE}[update]${NC} $dst"
+        UPDATED=$((UPDATED + 1))
       fi
     else
-      echo -e "  ${GREEN}[would add]${NC} $dst"
+      echo -e "  ${GREEN}[new]${NC}    $dst"
+      ADDED=$((ADDED + 1))
     fi
     return
   fi
 
-  mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
-  echo -e "  ${GREEN}[updated]${NC} $dst"
+  if [ -f "$dst" ]; then
+    if diff -q "$src" "$dst" &>/dev/null; then
+      UNCHANGED=$((UNCHANGED + 1))
+      return
+    fi
+    cp "$src" "$dst"
+    echo -e "  ${BLUE}[update]${NC} $dst"
+    UPDATED=$((UPDATED + 1))
+  else
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    echo -e "  ${GREEN}[new]${NC}    $dst"
+    ADDED=$((ADDED + 1))
+  fi
 }
 
+# --- Helper: update all files in a directory ---
 update_dir() {
   local src_dir="$1"
   local dst_dir="$2"
@@ -106,27 +125,34 @@ update_dir() {
     return
   fi
 
-  # Update/add files from template
-  find "$src_dir" -type f | while read -r src_file; do
+  find "$src_dir" -type f | sort | while read -r src_file; do
     local rel_path="${src_file#$src_dir/}"
     update_file "$src_file" "$dst_dir/$rel_path"
   done
+}
 
-  # Remove files in target that no longer exist in template
-  if [ -d "$dst_dir" ]; then
-    find "$dst_dir" -type f | while read -r dst_file; do
-      local rel_path="${dst_file#$dst_dir/}"
-      local src_file="$src_dir/$rel_path"
-      if [ ! -f "$src_file" ]; then
-        if [ "$DRY_RUN" = true ]; then
-          echo -e "  ${RED}[would remove]${NC} $dst_file (no longer in framework)"
-        else
-          rm "$dst_file"
-          echo -e "  ${RED}[removed]${NC} $dst_file (no longer in framework)"
-        fi
-      fi
-    done
+# --- Helper: remove files in target that no longer exist in templates ---
+cleanup_dir() {
+  local src_dir="$1"
+  local dst_dir="$2"
+
+  if [ ! -d "$dst_dir" ]; then
+    return
   fi
+
+  find "$dst_dir" -type f | sort | while read -r dst_file; do
+    local rel_path="${dst_file#$dst_dir/}"
+    local src_file="$src_dir/$rel_path"
+    if [ ! -f "$src_file" ]; then
+      if [ "$DRY_RUN" = true ]; then
+        echo -e "  ${RED}[remove]${NC} $dst_file"
+      else
+        rm "$dst_file"
+        echo -e "  ${RED}[remove]${NC} $dst_file"
+      fi
+      REMOVED=$((REMOVED + 1))
+    fi
+  done
 }
 
 # --- Banner ---
@@ -135,84 +161,61 @@ echo -e "${BLUE}╔════════════════════�
 echo -e "${BLUE}║   Claude Code Project Framework — Update         ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "Template source: ${BLUE}$TEMPLATE_DIR${NC}"
-echo -e "Target project:  ${BLUE}$TARGET_DIR${NC}"
+echo -e "Framework:  ${BLUE}$FRAMEWORK_VERSION${NC}"
+echo -e "Source:     ${BLUE}$TEMPLATE_DIR${NC}"
+echo -e "Target:     ${BLUE}$TARGET_DIR${NC}"
 if [ "$DRY_RUN" = true ]; then
-  echo -e "Mode:            ${YELLOW}DRY RUN${NC}"
+  echo -e "Mode:       ${YELLOW}DRY RUN${NC}"
 fi
 echo ""
 
-# --- Confirmation ---
-if [ "$FORCE" = false ] && [ "$DRY_RUN" = false ]; then
-  echo -e "${YELLOW}This will overwrite framework files (skills, rules, hooks, agents).${NC}"
-  echo -e "${YELLOW}Project-specific files (CLAUDE.md, docs/, tickets/) will NOT be touched.${NC}"
-  echo ""
-  read -p "Continue? (y/N) " -n 1 -r
-  echo ""
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Aborted."
-    exit 0
-  fi
-  echo ""
-fi
+# --- Update framework files ---
 
-# --- Protected files (never overwrite) ---
-echo -e "${BLUE}Protected (not updated):${NC}"
-echo -e "  CLAUDE.md, docs/*, .claude/tickets/*, .claude/agent-memory/*"
-echo ""
-
-# --- 1. Skills ---
 echo -e "${GREEN}[1/6] Skills${NC}"
 update_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
+cleanup_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
 
-# --- 2. Rules ---
 echo -e "${GREEN}[2/6] Rules${NC}"
 update_dir "$TEMPLATE_DIR/.claude/rules" "$TARGET_DIR/.claude/rules"
+cleanup_dir "$TEMPLATE_DIR/.claude/rules" "$TARGET_DIR/.claude/rules"
 
-# --- 3. Hooks ---
 echo -e "${GREEN}[3/6] Hooks${NC}"
 update_dir "$TEMPLATE_DIR/.claude/hooks" "$TARGET_DIR/.claude/hooks"
-# Make hooks executable
+cleanup_dir "$TEMPLATE_DIR/.claude/hooks" "$TARGET_DIR/.claude/hooks"
 if [ "$DRY_RUN" = false ]; then
   find "$TARGET_DIR/.claude/hooks" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
 fi
 
-# --- 4. Agents ---
 echo -e "${GREEN}[4/6] Agents${NC}"
 update_dir "$TEMPLATE_DIR/.claude/agents" "$TARGET_DIR/.claude/agents"
+cleanup_dir "$TEMPLATE_DIR/.claude/agents" "$TARGET_DIR/.claude/agents"
 
-# --- 5. Settings & TDD Guard ---
-echo -e "${GREEN}[5/6] Settings & TDD Guard${NC}"
+echo -e "${GREEN}[5/6] Settings${NC}"
 update_file "$TEMPLATE_DIR/.claude/settings.local.json" "$TARGET_DIR/.claude/settings.local.json"
-if [ -d "$TEMPLATE_DIR/.claude/tdd-guard" ]; then
-  update_dir "$TEMPLATE_DIR/.claude/tdd-guard" "$TARGET_DIR/.claude/tdd-guard"
-fi
 
-# --- 6. .claudeignore ---
 echo -e "${GREEN}[6/6] .claudeignore${NC}"
 update_file "$TEMPLATE_DIR/.claudeignore" "$TARGET_DIR/.claudeignore"
+
+# --- Skipped files ---
+echo ""
+echo -e "${YELLOW}Skipped (project-specific):${NC}"
+echo "  CLAUDE.md"
+echo "  docs/CURRENT_SPRINT.md"
+echo "  docs/LINEAR_SNAPSHOT.md"
 
 # --- Summary ---
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
-echo -e "${GREEN}║   Update complete!                               ║${NC}"
+echo -e "${GREEN}║   Update complete                                ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "What was updated:"
-echo "  - Skills, rules, hooks, agents (overwritten with latest framework)"
-echo "  - settings.local.json (hook registration)"
-echo "  - .claudeignore"
+echo -e "  Updated:   ${BLUE}$UPDATED${NC}"
+echo -e "  New:       ${GREEN}$ADDED${NC}"
+echo -e "  Removed:   ${RED}$REMOVED${NC}"
+echo -e "  Unchanged: $UNCHANGED"
 echo ""
-echo "What was preserved:"
-echo "  - CLAUDE.md (your project rules)"
-echo "  - docs/ (your documentation)"
-echo "  - .claude/tickets/ (your task tracking)"
-echo "  - .claude/agent-memory/ (agent persistent memory)"
-echo ""
-echo -e "${BLUE}Review changes:${NC} git diff"
-echo -e "${BLUE}New framework features may need CLAUDE.md updates.${NC}"
-echo ""
+
 if [ "$DRY_RUN" = true ]; then
   echo -e "${YELLOW}This was a dry run. No files were changed.${NC}"
-  echo -e "${YELLOW}Remove --dry-run to perform the actual update.${NC}"
+  echo -e "${YELLOW}Remove --dry-run to apply updates.${NC}"
 fi

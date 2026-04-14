@@ -4,7 +4,7 @@ description: Review staged changes before commit. Use when the user says "review
 argument-hint: ""
 user-invocable: true
 allowed-tools: Bash, Read, Grep, Glob
-model: sonnet
+model: opus
 ---
 
 # /review — Pre-commit code review

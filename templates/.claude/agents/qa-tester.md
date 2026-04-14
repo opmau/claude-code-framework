@@ -1,7 +1,7 @@
 ---
 name: qa-tester
 description: QA and testing agent. Use when writing tests, validating test coverage, or investigating test failures. Distinct from code-reviewer — this agent writes and runs tests.
-model: sonnet
+model: opus
 memory: project
 ---
 

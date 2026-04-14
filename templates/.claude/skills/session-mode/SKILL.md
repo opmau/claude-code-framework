@@ -4,7 +4,7 @@ description: Set the operating mode for the current session. Use when the user s
 argument-hint: "<mode name>"
 user-invocable: true
 allowed-tools: Read, Write, Glob
-model: haiku
+model: claude-3-5-haiku-latest
 ---
 
 # /session-mode — Set session operating mode

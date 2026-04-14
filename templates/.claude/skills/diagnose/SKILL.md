@@ -4,7 +4,7 @@ description: Investigate a bug using structured differential diagnosis. Use when
 argument-hint: "<symptom description>"
 user-invocable: true
 allowed-tools: Bash, Read, Grep, Glob, Task
-model: sonnet
+model: opus
 ---
 
 # /diagnose — Structured differential diagnosis
