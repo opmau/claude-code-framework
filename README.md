@@ -43,6 +43,12 @@ git clone https://github.com/opmau/claude-code-framework.git
 # Option A: Automated setup (recommended)
 bash claude-code-framework/bin/setup.sh /path/to/your-project
 
+# Option A2: Auto-calibrate file-size limits for your language in one shot
+bash claude-code-framework/bin/setup.sh /path/to/your-project --language python
+# Supported: python, cpp, typescript, rust, go, none
+# (Patches .claude/hooks/check-file-size.sh constants AND the CLAUDE.md
+#  File Size Limits table to match. Omit the flag to keep the C++ defaults.)
+
 # Option B: Manual copy
 cp -r claude-code-framework/templates/.claude your-project/.claude
 cp claude-code-framework/templates/CLAUDE.md your-project/CLAUDE.md
@@ -264,7 +270,10 @@ File limits aren't just code quality — they're **agent performance optimizatio
 
 ### Language Calibration
 
-Adjust file size limits for your language:
+Pass `--language <name>` to `bin/setup.sh` and the script will patch both the
+`.claude/hooks/check-file-size.sh` constants and the CLAUDE.md File Size Limits
+table to match. The values used are below. Omit the flag to keep the template's
+C++ defaults; pass `--language none` to be explicit about opting out.
 
 | Language | Header/Interface | Implementation | Total |
 |----------|------------------|----------------|-------|

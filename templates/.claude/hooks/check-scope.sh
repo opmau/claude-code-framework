@@ -20,8 +20,27 @@ fi
 # DEFAULT: restrictive — only src, tests, docs, and .claude config.
 # Add more directories as needed for your project.
 ALLOWED_DIRS="src/ tests/ docs/ .claude/"
-# Files that are always OK to edit
-ALLOWED_FILES="CLAUDE.md docs/CURRENT_SPRINT.md docs/LINEAR_SNAPSHOT.md"
+# Files that are always OK to edit. Includes common project-root files
+# across Python/Node/Rust/Go/etc. so first-time edits don't trigger spurious
+# scope warnings. Add project-specific entries as needed.
+ALLOWED_FILES="\
+  CLAUDE.md \
+  README.md \
+  docs/CURRENT_SPRINT.md \
+  docs/LINEAR_SNAPSHOT.md \
+  pyproject.toml \
+  package.json \
+  package-lock.json \
+  Cargo.toml \
+  Cargo.lock \
+  go.mod \
+  go.sum \
+  tsconfig.json \
+  Makefile \
+  .gitignore \
+  .claudeignore \
+  .mcp.json \
+  .linear.toml"
 # ----------------------------------------
 
 # --- SESSION MODE ENFORCEMENT ---
