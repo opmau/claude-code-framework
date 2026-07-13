@@ -140,6 +140,7 @@ templates/
     │   ├── document-bug/SKILL.md       # /document-bug — log bugs in Linear
     │   ├── session-mode/SKILL.md       # /session-mode — set session constraints
     │   ├── diagnose/SKILL.md           # /diagnose — structured bug investigation
+    │   ├── prfaq/SKILL.md              # /prfaq — interview to shared understanding on a PRFAQ
     │   ├── fix-issue/SKILL.md          # /fix-issue — fix tracked Linear issues
     │   ├── smoke-test/SKILL.md         # /smoke-test — integration test log triage
     │   ├── create-ticket/SKILL.md      # /create-ticket — local task tracking

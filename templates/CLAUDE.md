@@ -812,6 +812,7 @@ Custom slash commands available in this project:
 | `/document-bug` | Create a Linear issue for a bug without fixing it | `.claude/skills/document-bug/SKILL.md` |
 | `/session-mode` | Set session operating mode (debug/refactor/feature) | `.claude/skills/session-mode/SKILL.md` |
 | `/diagnose` | Structured differential diagnosis for complex bugs | `.claude/skills/diagnose/SKILL.md` |
+| `/prfaq` | Interview to shared understanding on a PRFAQ before implementation | `.claude/skills/prfaq/SKILL.md` |
 | `/fix-issue` | Pick a bug from Linear, fix it, verify, update issue | `.claude/skills/fix-issue/SKILL.md` |
 | `/smoke-test` | Diagnose integration test logs, classify failures, create issues | `.claude/skills/smoke-test/SKILL.md` |
 | `/create-ticket` | Create a local ticket for task tracking | `.claude/skills/create-ticket/SKILL.md` |
@@ -1010,6 +1011,7 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── document-bug/SKILL.md       # /document-bug command
 │   │   ├── session-mode/SKILL.md       # /session-mode command
 │   │   ├── diagnose/SKILL.md           # /diagnose command
+│   │   ├── prfaq/SKILL.md              # /prfaq command
 │   │   ├── fix-issue/SKILL.md          # /fix-issue command
 │   │   ├── smoke-test/SKILL.md        # /smoke-test command
 │   │   ├── create-ticket/SKILL.md     # /create-ticket command
