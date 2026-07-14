@@ -8,14 +8,18 @@
 #   bash setup.sh <target-project-dir> [options]
 #
 # Options:
-#   --all          Install everything (default)
-#   --no-hooks     Skip hooks
-#   --no-agents    Skip agents
-#   --no-skills    Skip skills
-#   --no-rules     Skip rules
-#   --no-docs      Skip companion docs
-#   --dry-run      Show what would be copied without doing it
-#   --force        Overwrite existing files without prompting
+#   --all                  Install everything (default)
+#   --language <name>      Apply file-size calibration for a language.
+#                          Supported: python, cpp, typescript, rust, go, none.
+#                          Default (omitted): no calibration — template C++ defaults
+#                          remain in place. Use 'none' to be explicit.
+#   --no-hooks             Skip hooks
+#   --no-agents            Skip agents
+#   --no-skills            Skip skills
+#   --no-rules             Skip rules
+#   --no-docs              Skip companion docs
+#   --dry-run              Show what would be copied without doing it
+#   --force                Overwrite existing files without prompting
 #
 # Prerequisites:
 #   - bash 4+ (macOS: brew install bash)
@@ -44,12 +48,22 @@ INSTALL_RULES=true
 INSTALL_DOCS=true
 DRY_RUN=false
 FORCE=false
+LANGUAGE=""
 
 # --- Parse arguments ---
 TARGET_DIR=""
-for arg in "$@"; do
-  case "$arg" in
+while [ $# -gt 0 ]; do
+  case "$1" in
     --all)          ;; # default behavior
+    --language)
+      shift
+      if [ $# -eq 0 ]; then
+        echo -e "${RED}ERROR: --language requires an argument.${NC}"
+        exit 1
+      fi
+      LANGUAGE="$1"
+      ;;
+    --language=*)   LANGUAGE="${1#--language=}" ;;
     --no-hooks)     INSTALL_HOOKS=false ;;
     --no-agents)    INSTALL_AGENTS=false ;;
     --no-skills)    INSTALL_SKILLS=false ;;
@@ -57,23 +71,36 @@ for arg in "$@"; do
     --no-docs)      INSTALL_DOCS=false ;;
     --dry-run)      DRY_RUN=true ;;
     --force)        FORCE=true ;;
-    -*)             echo -e "${RED}Unknown option: $arg${NC}"; exit 1 ;;
-    *)              TARGET_DIR="$arg" ;;
+    -*)             echo -e "${RED}Unknown option: $1${NC}"; exit 1 ;;
+    *)              TARGET_DIR="$1" ;;
   esac
+  shift
 done
+
+# --- Validate --language ---
+case "${LANGUAGE:-}" in
+  ""|"none"|"python"|"cpp"|"typescript"|"rust"|"go") ;;
+  *)
+    echo -e "${RED}ERROR: unknown --language '$LANGUAGE'.${NC}"
+    echo "       Supported: python, cpp, typescript, rust, go, none"
+    exit 1
+    ;;
+esac
 
 if [ -z "$TARGET_DIR" ]; then
   echo -e "${RED}Usage: bash setup.sh <target-project-dir> [options]${NC}"
   echo ""
   echo "Options:"
-  echo "  --all          Install everything (default)"
-  echo "  --no-hooks     Skip hooks"
-  echo "  --no-agents    Skip agents"
-  echo "  --no-skills    Skip skills"
-  echo "  --no-rules     Skip rules"
-  echo "  --no-docs      Skip companion docs"
-  echo "  --dry-run      Show what would be copied without doing it"
-  echo "  --force        Overwrite existing files without prompting"
+  echo "  --all                  Install everything (default)"
+  echo "  --language <name>      Auto-calibrate file-size limits for a language."
+  echo "                         Supported: python, cpp, typescript, rust, go, none"
+  echo "  --no-hooks             Skip hooks"
+  echo "  --no-agents            Skip agents"
+  echo "  --no-skills            Skip skills"
+  echo "  --no-rules             Skip rules"
+  echo "  --no-docs              Skip companion docs"
+  echo "  --dry-run              Show what would be copied without doing it"
+  echo "  --force                Overwrite existing files without prompting"
   exit 1
 fi
 
@@ -104,6 +131,59 @@ copy_file() {
   mkdir -p "$(dirname "$dst")"
   cp "$src" "$dst"
   echo -e "  ${GREEN}[copied]${NC} $dst"
+}
+
+# Portable in-place file edit (works on GNU sed, BSD sed, Git Bash).
+# Usage: inplace_sed <sed-expression> <file>
+inplace_sed() {
+  local expr="$1"
+  local file="$2"
+  if [ "$DRY_RUN" = true ]; then return; fi
+  if [ ! -f "$file" ]; then return; fi
+  local tmp="$file.tmp.$$"
+  sed "$expr" "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
+# Apply language calibration to the file-size hook constants and the
+# CLAUDE.md File Size Limits table. Idempotent — re-running with a different
+# language overwrites cleanly.
+apply_language_calibration() {
+  local lang="$1"
+  local target="$2"
+  local hook="$target/.claude/hooks/check-file-size.sh"
+  local claude_md="$target/CLAUDE.md"
+
+  # Per-language calibration. Header limit is "N/A" for languages without
+  # separate header/interface files; we still set the hook constant equal
+  # to the impl limit so any extension that *would* match (none for these
+  # langs) gets the impl limit. The table value is the human-facing one.
+  local h_hook i_hook t_hook h_table i_table t_table label
+  case "$lang" in
+    python)     h_hook=300; i_hook=300; t_hook=300; h_table="N/A"; i_table=300; t_table=300; label="Python";;
+    cpp)        h_hook=150; i_hook=400; t_hook=500; h_table=150;   i_table=400; t_table=500; label="C/C++";;
+    typescript) h_hook=100; i_hook=300; t_hook=400; h_table=100;   i_table=300; t_table=400; label="TypeScript";;
+    rust)       h_hook=400; i_hook=400; t_hook=400; h_table="N/A"; i_table=400; t_table=400; label="Rust";;
+    go)         h_hook=400; i_hook=400; t_hook=400; h_table="N/A"; i_table=400; t_table=400; label="Go";;
+    *) return ;;
+  esac
+
+  # 1. Patch the hook script constants.
+  if [ -f "$hook" ]; then
+    inplace_sed "s/^HEADER_LIMIT=.*/HEADER_LIMIT=$h_hook/" "$hook"
+    inplace_sed "s/^IMPL_LIMIT=.*/IMPL_LIMIT=$i_hook/"     "$hook"
+    inplace_sed "s/^TOTAL_LIMIT=.*/TOTAL_LIMIT=$t_hook/"   "$hook"
+  fi
+
+  # 2. Patch the CLAUDE.md File Size Limits table placeholders.
+  #    The template uses [150], [400], [500] as bracketed placeholders.
+  #    Use | as the s-command delimiter so values containing / (e.g. N/A) are safe.
+  if [ -f "$claude_md" ]; then
+    inplace_sed "s|\[150\] lines|$h_table lines|g" "$claude_md"
+    inplace_sed "s|\[400\] lines|$i_table lines|g" "$claude_md"
+    inplace_sed "s|\[500\] lines|$t_table lines|g" "$claude_md"
+  fi
+
+  echo -e "  ${GREEN}[calibrated]${NC} $label — hook + CLAUDE.md File Size Limits patched (header/$h_table, impl/$i_table, total/$t_table)"
 }
 
 copy_dir() {
@@ -194,6 +274,16 @@ fi
 echo -e "${GREEN}[7/7] .claudeignore${NC}"
 copy_file "$TEMPLATE_DIR/.claudeignore" "$TARGET_DIR/.claudeignore"
 
+# --- Apply --language calibration (after hooks + CLAUDE.md are in place) ---
+if [ -n "${LANGUAGE:-}" ] && [ "$LANGUAGE" != "none" ]; then
+  if [ "$DRY_RUN" = false ]; then
+    echo -e "${GREEN}[calibration]${NC} Applying $LANGUAGE language calibration"
+    apply_language_calibration "$LANGUAGE" "$TARGET_DIR"
+  else
+    echo -e "${BLUE}[dry-run]${NC} Would calibrate hooks + CLAUDE.md for $LANGUAGE"
+  fi
+fi
+
 # --- Summary ---
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════╗${NC}"
@@ -204,8 +294,27 @@ echo "Next steps:"
 echo "  1. cd $TARGET_DIR"
 echo "  2. Open Claude Code and run the bootstrap prompt from PROJECT_SETUP.md"
 echo "  3. Customize [BRACKETED] placeholders in CLAUDE.md"
-echo "  4. Adjust hook limits in .claude/hooks/ for your language"
+if [ -z "${LANGUAGE:-}" ] || [ "$LANGUAGE" = "none" ]; then
+  echo "  4. Adjust hook limits in .claude/hooks/ for your language"
+  echo "     (or re-run with --language python|cpp|typescript|rust|go to auto-calibrate)"
+else
+  echo "  4. Hook limits auto-calibrated for $LANGUAGE — review .claude/hooks/check-file-size.sh"
+fi
 echo "  5. Run /build and /test to verify setup"
+
+# --- Linear CLI preflight (only if Linear skills are present) ---
+if [ "$INSTALL_SKILLS" = true ] && [ -d "$TARGET_DIR/.claude/skills/linear-create" ]; then
+  echo ""
+  echo "  Linear integration uses schpet/linear-cli (CLI, not MCP)."
+  if command -v linear >/dev/null 2>&1; then
+    echo "  ✓ linear CLI detected on PATH"
+  else
+    echo "  ⚠ linear CLI not detected on PATH. Install:"
+    echo "      macOS:  brew install schpet/tap/linear"
+    echo "      Deno:   deno install -A --reload -f -g -n linear jsr:@schpet/linear-cli"
+    echo "    Then authenticate: linear auth login"
+  fi
+fi
 echo ""
 if [ "$DRY_RUN" = true ]; then
   echo -e "${YELLOW}This was a dry run. No files were actually copied.${NC}"
