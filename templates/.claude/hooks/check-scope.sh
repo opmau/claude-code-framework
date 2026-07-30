@@ -26,13 +26,17 @@ PROJECT_CONF="$HOOK_DIR/../project.conf"
 # shellcheck source=/dev/null
 [ -f "$PROJECT_CONF" ] && . "$PROJECT_CONF"
 
-# Framework defaults — applied only where project.conf left a value unset.
-ALLOWED_DIRS="${ALLOWED_DIRS:-src/ tests/ docs/ .claude/}"
+# Framework defaults — applied only where project.conf left a value UNSET.
+# Tested with +x rather than :- so that explicitly setting a variable to the
+# empty string means "match nothing", instead of silently restoring the default.
+if [ -z "${ALLOWED_DIRS+x}" ]; then
+  ALLOWED_DIRS="src/ tests/ docs/ .claude/"
+fi
 
 # Common project-root files across Python/Node/Rust/Go/etc. so first-time
 # edits don't trigger spurious scope warnings. Extend per project with
 # ALLOWED_FILES_EXTRA rather than replacing this.
-if [ -z "${ALLOWED_FILES:-}" ]; then
+if [ -z "${ALLOWED_FILES+x}" ]; then
   ALLOWED_FILES="CLAUDE.md README.md docs/CURRENT_SPRINT.md docs/LINEAR_SNAPSHOT.md"
   ALLOWED_FILES="$ALLOWED_FILES pyproject.toml package.json package-lock.json"
   ALLOWED_FILES="$ALLOWED_FILES Cargo.toml Cargo.lock go.mod go.sum tsconfig.json"
@@ -41,21 +45,12 @@ fi
 ALLOWED_FILES="$ALLOWED_FILES ${ALLOWED_FILES_EXTRA:-}"
 # ----------------------------------------------------------------------------
 
-# --- SESSION MODE ENFORCEMENT ---
-# If a session mode is active in CURRENT_SPRINT.md, enforce stricter constraints
-if [ -f "docs/CURRENT_SPRINT.md" ]; then
-  SESSION_MODE=$(grep -A1 "Active Session Mode" docs/CURRENT_SPRINT.md 2>/dev/null | grep "Mode:" | sed 's/.*Mode:[[:space:]]*//' | tr -d '[:space:]')
-  case "$SESSION_MODE" in
-    debug)
-      # In debug mode, keep defaults but add extra warning
-      ;;
-  esac
-fi
-# ----------------------------------------
-
 # Normalize Windows backslashes so matching works for the absolute paths the
 # Edit/Write tools report on Windows (C:\Users\...\tests\x.py).
-FILE_PATH_NORM=$(printf '%s' "$FILE_PATH" | tr '\\' '/')
+# '\134' is the POSIX octal escape for a backslash. Written this way because
+# tr '\\' '/' makes GNU tr warn "unescaped backslash at end of string is not
+# portable" on stderr on every single edit, and trips shellcheck SC1003.
+FILE_PATH_NORM=$(printf '%s' "$FILE_PATH" | tr '\134' '/')
 BASE_NAME="${FILE_PATH_NORM##*/}"
 
 IN_SCOPE=false

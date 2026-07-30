@@ -873,9 +873,9 @@ Custom subagents for specialized tasks:
 
 | Agent | Model | Memory | When to Use |
 |-------|-------|--------|-------------|
-| `code-reviewer` | Haiku | Project | Before commits — reviews against CLAUDE.md |
+| `code-reviewer` | Opus | Project | Before commits — reviews against CLAUDE.md |
 | `planner` | Opus | Project | Before multi-step features, refactors, or architecture changes |
-| `qa-tester` | Sonnet | Project | Writing tests, validating coverage, investigating failures |
+| `qa-tester` | Opus | Project | Writing tests, validating coverage, investigating failures |
 | `[domain]-expert` | Opus | Project | After 2 failed fix attempts on [domain] issues |
 | `linear-pm` | Opus | Project | Sprint planning, velocity analysis, project health, release readiness |
 
@@ -1037,11 +1037,15 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── file-size-limits.md         # Size limits (path-scoped)
 │   │   ├── testing-protocol.md         # Test mapping (path-scoped)
 │   │   ├── feedback-loop.md            # Post-session review
-│   │   └── linear-workflow.md         # Linear integration rules
+│   │   ├── linear-workflow.md          # Linear integration rules
+│   │   ├── anti-patterns.md            # Explicit "don't do this" registry
+│   │   ├── canary-strategy.md          # De-risking cross-cutting changes
+│   │   ├── complexity-budget.md        # Measurable code-health thresholds
+│   │   └── trust-levels.md             # Progressive autonomy by area
 │   ├── agents/
-│   │   ├── code-reviewer.md            # Pre-commit review (Haiku)
+│   │   ├── code-reviewer.md            # Pre-commit review (Opus)
 │   │   ├── planner.md                  # Task planning (Opus)
-│   │   ├── qa-tester.md                # Test writing and QA (Sonnet)
+│   │   ├── qa-tester.md                # Test writing and QA (Opus)
 │   │   ├── [domain]-expert.md          # Domain specialist (Opus)
 │   │   └── linear-pm.md               # Linear product management (Opus)
 │   └── tickets/
