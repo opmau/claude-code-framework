@@ -1,0 +1,61 @@
+# ============================================================================
+# project.conf — project-local framework configuration
+# ============================================================================
+# Sourced by .claude/hooks/*.sh as plain shell. Every setting is optional:
+# anything left commented out falls back to the framework default shown.
+#
+# THIS FILE IS NEVER TOUCHED BY bin/update.sh.
+#
+# It is the supported place to customize framework behavior for a project.
+# Do NOT edit the hook scripts themselves — the updater copies those over
+# wholesale on every framework update, silently reverting your changes.
+#
+# bin/setup.sh creates this file if it is absent and never overwrites an
+# existing one, including with --force.
+# ============================================================================
+
+
+# --- check-scope.sh ---------------------------------------------------------
+
+# Directories where edits are expected. Space-separated, each with a trailing
+# slash. A path matches when the directory starts it or follows a slash.
+# Set this if your source does not live in src/.
+#
+# Default: "src/ tests/ docs/ .claude/"
+#ALLOWED_DIRS="src/ tests/ docs/ .claude/"
+
+# Additional always-editable files, APPENDED to the framework's built-in list
+# (CLAUDE.md, README.md, pyproject.toml, package.json, Cargo.toml, go.mod,
+# tsconfig.json, Makefile, .gitignore, .claudeignore, .mcp.json, .linear.toml
+# and the docs/ sprint files).
+#
+# Space-separated. A bare name matches any file with that basename; an entry
+# containing a slash matches a path suffix. Matches are exact, not substring.
+#
+# Default: "" (nothing extra)
+#ALLOWED_FILES_EXTRA="requirements.txt"
+
+# To REPLACE the built-in list rather than extend it, set ALLOWED_FILES
+# directly. Most projects should use ALLOWED_FILES_EXTRA instead.
+#ALLOWED_FILES=""
+
+
+# --- check-file-size.sh -----------------------------------------------------
+
+# Line-count limits. `bash bin/setup.sh <proj> --language <name>` writes these
+# for you; they are listed here so they survive framework updates.
+#
+#   python      300 / 300 / 300
+#   cpp         150 / 400 / 500   (framework default)
+#   typescript  100 / 300 / 400
+#   rust         400 / 400 / 400
+#   go           400 / 400 / 400
+#
+# HEADER_LIMIT applies to .h/.hpp/.d.ts/.types.ts; IMPL_LIMIT to everything
+# else. Defaults: 150 / 400 / 500
+#HEADER_LIMIT=150
+#IMPL_LIMIT=400
+#TOTAL_LIMIT=500
+
+# Lines per function before a complexity hint fires. Default: 40
+#FUNC_LIMIT=40

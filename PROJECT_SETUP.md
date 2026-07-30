@@ -174,20 +174,28 @@ Verify skills work by typing `/build` and `/test` in Claude Code.
 
 ## Step 6: Configure Hooks
 
-The setup script (or manual copy) already installs `.claude/settings.local.json` with hooks pre-registered. Just customize the scripts:
+The setup script (or manual copy) already installs `.claude/settings.local.json` with hooks pre-registered, and `.claude/project.conf` for configuration.
+
+**Configure hooks in `.claude/project.conf`, not in the hook scripts.** `bin/update.sh` copies `.claude/hooks/` over wholesale on every framework update, so edits made directly to a hook script are silently reverted. `project.conf` is never touched.
 
 ```
-Read .claude/hooks/ and customize:
+Read .claude/project.conf and set:
 
-1. check-scope.sh — update ALLOWED_DIRS for our project structure
-2. check-file-size.sh — update HEADER_LIMIT, IMPL_LIMIT, TOTAL_LIMIT
-   for our language (use the calibration table in CLAUDE.md)
-3. inject-critical-rules.sh — review the critical rules list
-4. session-check.sh — no changes needed
+1. ALLOWED_DIRS — the directories our source actually lives in
+   (defaults to "src/ tests/ docs/ .claude/")
+2. ALLOWED_FILES_EXTRA — any extra project-root files we edit routinely
+3. HEADER_LIMIT / IMPL_LIMIT / TOTAL_LIMIT — for our language
+   (or re-run setup.sh with --language <name> to fill these in)
 
-Make the hook scripts executable: chmod +x .claude/hooks/*.sh
 Show me the changes before writing.
 ```
+
+Two hooks have no `project.conf` settings and are customized in place if needed — accepting that an update will revert them:
+
+- `inject-critical-rules.sh` — review the critical rules list
+- `session-check.sh` — no changes needed
+
+Make the hook scripts executable: `chmod +x .claude/hooks/*.sh`
 
 **Optional — TDD enforcement with tdd-guard:**
 

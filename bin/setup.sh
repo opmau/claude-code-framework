@@ -144,13 +144,58 @@ inplace_sed() {
   sed "$expr" "$file" > "$tmp" && mv "$tmp" "$file"
 }
 
-# Apply language calibration to the file-size hook constants and the
-# CLAUDE.md File Size Limits table. Idempotent — re-running with a different
-# language overwrites cleanly.
+# Install .claude/project.conf — the project-local configuration file that
+# bin/update.sh never touches. Deliberately does NOT honour --force: this file
+# is project-owned state, not framework content, so overwriting it would throw
+# away exactly the customization it exists to protect.
+install_project_conf() {
+  local target="$1"
+  local dst="$target/.claude/project.conf"
+
+  if [ "$DRY_RUN" = true ]; then
+    echo -e "  ${BLUE}[dry-run]${NC} $dst"
+    return
+  fi
+
+  if [ -f "$dst" ]; then
+    echo -e "  ${YELLOW}[exists]${NC} $dst — preserved (project-owned, never overwritten)"
+    return
+  fi
+
+  mkdir -p "$(dirname "$dst")"
+  cp "$TEMPLATE_DIR/.claude/project.conf.example" "$dst"
+  echo -e "  ${GREEN}[created]${NC} $dst"
+}
+
+# Set KEY=VALUE in a project.conf, replacing the line whether it is currently
+# commented out (the shipped default) or already active. Appends if absent.
+set_conf_value() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+
+  if [ "$DRY_RUN" = true ] || [ ! -f "$file" ]; then
+    return
+  fi
+
+  if grep -q "^[[:space:]]*#\{0,1\}[[:space:]]*${key}=" "$file"; then
+    inplace_sed "s|^[[:space:]]*#\{0,1\}[[:space:]]*${key}=.*|${key}=${value}|" "$file"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$file"
+  fi
+}
+
+# Apply language calibration to .claude/project.conf and the CLAUDE.md File
+# Size Limits table. Idempotent — re-running with a different language
+# overwrites cleanly.
+#
+# Writes to project.conf rather than patching the hook script directly:
+# bin/update.sh copies hooks over wholesale, so hook-level calibration was
+# silently reverted by the next framework update.
 apply_language_calibration() {
   local lang="$1"
   local target="$2"
-  local hook="$target/.claude/hooks/check-file-size.sh"
+  local conf="$target/.claude/project.conf"
   local claude_md="$target/CLAUDE.md"
 
   # Per-language calibration. Header limit is "N/A" for languages without
@@ -167,12 +212,12 @@ apply_language_calibration() {
     *) return ;;
   esac
 
-  # 1. Patch the hook script constants.
-  if [ -f "$hook" ]; then
-    inplace_sed "s/^HEADER_LIMIT=.*/HEADER_LIMIT=$h_hook/" "$hook"
-    inplace_sed "s/^IMPL_LIMIT=.*/IMPL_LIMIT=$i_hook/"     "$hook"
-    inplace_sed "s/^TOTAL_LIMIT=.*/TOTAL_LIMIT=$t_hook/"   "$hook"
-  fi
+  # 1. Write the limits into project.conf, which survives framework updates.
+  #    Covers the --no-hooks case, where step [4/7] never ran.
+  [ -f "$conf" ] || install_project_conf "$target"
+  set_conf_value "$conf" HEADER_LIMIT "$h_hook"
+  set_conf_value "$conf" IMPL_LIMIT   "$i_hook"
+  set_conf_value "$conf" TOTAL_LIMIT  "$t_hook"
 
   # 2. Patch the CLAUDE.md File Size Limits table placeholders.
   #    The template uses [150], [400], [500] as bracketed placeholders.
@@ -183,7 +228,7 @@ apply_language_calibration() {
     inplace_sed "s|\[500\] lines|$t_table lines|g" "$claude_md"
   fi
 
-  echo -e "  ${GREEN}[calibrated]${NC} $label — hook + CLAUDE.md File Size Limits patched (header/$h_table, impl/$i_table, total/$t_table)"
+  echo -e "  ${GREEN}[calibrated]${NC} $label — project.conf + CLAUDE.md File Size Limits set (header/$h_table, impl/$i_table, total/$t_table)"
 }
 
 copy_dir() {
@@ -250,6 +295,8 @@ if [ "$INSTALL_HOOKS" = true ]; then
   fi
   # Copy settings template
   copy_file "$TEMPLATE_DIR/.claude/settings.local.json" "$TARGET_DIR/.claude/settings.local.json"
+  # Project-local hook configuration (never overwritten by setup or update)
+  install_project_conf "$TARGET_DIR"
 else
   echo -e "${YELLOW}[4/7] Hooks — skipped${NC}"
 fi
@@ -295,11 +342,13 @@ echo "  1. cd $TARGET_DIR"
 echo "  2. Open Claude Code and run the bootstrap prompt from PROJECT_SETUP.md"
 echo "  3. Customize [BRACKETED] placeholders in CLAUDE.md"
 if [ -z "${LANGUAGE:-}" ] || [ "$LANGUAGE" = "none" ]; then
-  echo "  4. Adjust hook limits in .claude/hooks/ for your language"
+  echo "  4. Set hook limits and ALLOWED_DIRS in .claude/project.conf"
   echo "     (or re-run with --language python|cpp|typescript|rust|go to auto-calibrate)"
 else
-  echo "  4. Hook limits auto-calibrated for $LANGUAGE — review .claude/hooks/check-file-size.sh"
+  echo "  4. Hook limits auto-calibrated for $LANGUAGE — review .claude/project.conf"
 fi
+echo "     Customize the framework there, never by editing .claude/hooks/ —"
+echo "     the updater overwrites hooks but never touches project.conf."
 echo "  5. Run /build and /test to verify setup"
 
 # --- Linear CLI preflight (only if Linear skills are present) ---

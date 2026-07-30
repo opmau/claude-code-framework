@@ -46,7 +46,7 @@ bash claude-code-framework/bin/setup.sh /path/to/your-project
 # Option A2: Auto-calibrate file-size limits for your language in one shot
 bash claude-code-framework/bin/setup.sh /path/to/your-project --language python
 # Supported: python, cpp, typescript, rust, go, none
-# (Patches .claude/hooks/check-file-size.sh constants AND the CLAUDE.md
+# (Writes the limits into .claude/project.conf AND updates the CLAUDE.md
 #  File Size Limits table to match. Omit the flag to keep the C++ defaults.)
 
 # Option B: Manual copy
@@ -54,6 +54,7 @@ cp -r claude-code-framework/templates/.claude your-project/.claude
 cp claude-code-framework/templates/CLAUDE.md your-project/CLAUDE.md
 cp claude-code-framework/templates/.claudeignore your-project/.claudeignore
 cp -r claude-code-framework/templates/docs your-project/docs
+mv your-project/.claude/project.conf.example your-project/.claude/project.conf
 ```
 
 **Prerequisites (for hooks):** bash 4+, `jq`. On Windows, use Git Bash or WSL. See [Platform Notes](PROJECT_SETUP.md#platform-notes).
@@ -110,7 +111,20 @@ bash claude-code-framework/bin/update.sh /path/to/your-project --dry-run
 bash claude-code-framework/bin/update.sh /path/to/your-project
 ```
 
-The update script overwrites **framework files only** (skills, rules, hooks, agents, settings) and never touches your project-specific files (`CLAUDE.md`, `docs/`, `.linear.toml`). It also removes skills or rules that were deleted from the framework.
+The update script overwrites **framework files only** (skills, rules, hooks, agents) and never touches your project-specific files (`CLAUDE.md`, `docs/`, `.linear.toml`, `.claude/project.conf`).
+
+Project-owned files are protected:
+
+| File | Behavior on update |
+|------|-------------------|
+| `.claude/project.conf` | Never touched. This is where you customize the framework. |
+| `.claude/settings.local.json` | Installed if missing; once you edit it, left alone (it holds your hook wiring and permissions). |
+| `.claudeignore` | Same — installed if missing, preserved once edited. |
+| Skills/rules/hooks/agents you wrote yourself | Kept and reported as `[extra]`. Pass `--prune` to delete anything absent from the templates. |
+
+When a preserved file has upstream changes you want, the script prints the `diff` command to review them.
+
+> **Customize in `.claude/project.conf`, never by editing `.claude/hooks/`.** The updater copies hooks over wholesale, so edits made directly to a hook script are silently reverted on the next update.
 
 ## What's Included
 
@@ -128,6 +142,7 @@ templates/
 │   └── LINEAR_SNAPSHOT.md             # Auto-generated Linear cache
 └── .claude/
     ├── settings.local.json             # Hook registration (pre-configured)
+    ├── project.conf.example            # Per-project hook config; never overwritten by update.sh
     ├── skills/
     │   ├── build/SKILL.md              # /build — compile and report
     │   ├── test/SKILL.md               # /test — run tests, parse results
@@ -269,12 +284,35 @@ File limits aren't just code quality — they're **agent performance optimizatio
 
 ## Customization
 
+### `.claude/project.conf`
+
+All per-project framework configuration lives in `.claude/project.conf`, created
+by `bin/setup.sh` and **never touched by `bin/update.sh`**. The hooks source it
+at runtime and fall back to the framework defaults for anything left unset, so
+the framework itself stays generic while each project overrides what it needs.
+
+```bash
+# Source lives in pdf2frate/, not src/
+ALLOWED_DIRS="pdf2frate/ tests/ docs/ .claude/"
+
+# Extend the built-in always-editable file list rather than replacing it
+ALLOWED_FILES_EXTRA="requirements.txt"
+
+# Python calibration
+HEADER_LIMIT=300
+IMPL_LIMIT=300
+TOTAL_LIMIT=300
+```
+
+Editing the hook scripts directly does not survive an update — the updater
+copies them over wholesale. `project.conf` is the supported seam.
+
 ### Language Calibration
 
-Pass `--language <name>` to `bin/setup.sh` and the script will patch both the
-`.claude/hooks/check-file-size.sh` constants and the CLAUDE.md File Size Limits
-table to match. The values used are below. Omit the flag to keep the template's
-C++ defaults; pass `--language none` to be explicit about opting out.
+Pass `--language <name>` to `bin/setup.sh` and the script writes the limits into
+`.claude/project.conf` and updates the CLAUDE.md File Size Limits table to match.
+The values used are below. Omit the flag to keep the template's C++ defaults;
+pass `--language none` to be explicit about opting out.
 
 | Language | Header/Interface | Implementation | Total |
 |----------|------------------|----------------|-------|
