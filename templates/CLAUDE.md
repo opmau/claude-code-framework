@@ -234,7 +234,10 @@ FORBIDDEN:   ❌ Any reverse dependency (lower importing higher)
         from context exhaustion.
 
      CALIBRATING FOR YOUR LANGUAGE:
-     The numbers below assume C++/TypeScript. Adjust for your language:
+     The numbers below assume C++/TypeScript. Adjust for your language by
+     setting HEADER_LIMIT / IMPL_LIMIT / TOTAL_LIMIT in .claude/project.conf
+     (or re-running setup.sh with --language <name>). Do NOT edit
+     .claude/hooks/check-file-size.sh — the updater overwrites it.
 
      | Language   | Header/Interface | Implementation | Total |
      |------------|------------------|----------------|-------|
@@ -1020,9 +1023,10 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── linear-triage/SKILL.md     # /linear-triage command
 │   │   ├── linear-sprint/SKILL.md     # /linear-sprint command
 │   │   └── linear-update/SKILL.md     # /linear-update command
+│   ├── project.conf                    # Per-project hook config; never overwritten by update.sh
 │   ├── hooks/
-│   │   ├── check-file-size.sh          # PostToolUse: size limit check
-│   │   ├── check-scope.sh              # PreToolUse: scope warning + session mode
+│   │   ├── check-file-size.sh          # PostToolUse: size limit check (set limits in project.conf)
+│   │   ├── check-scope.sh              # PreToolUse: scope warning + session mode (via project.conf)
 │   │   ├── pre-commit-check.sh         # PreToolUse: build/test verification
 │   │   ├── inject-critical-rules.sh    # PreCompact: rule survival
 │   │   └── session-check.sh            # Stop: feedback loop nudge
