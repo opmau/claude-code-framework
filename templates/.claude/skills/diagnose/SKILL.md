@@ -62,7 +62,31 @@ Investigate a bug systematically by gathering evidence, forming multiple hypothe
    [Ruled-out causes — prevents revisiting dead ends]
    ```
 
-6. **Do NOT implement the fix** — present the diagnosis and let the user decide.
+6. **Record the verdict on the tracked issue.** A diagnosis that stays in the
+   session is lost — the next session re-reads the same unconfirmed theory and
+   re-does the same work. If the bug is tracked in Linear:
+
+   ```bash
+   linear issue comment add ENG-123 -b "**Root Cause:** CONFIRMED — <file:line>
+
+   **Reproduced by:** <exact command, steps, or test that shows the failure>
+
+   **Evidence:** <what confirmed it, with file:line or log output>
+
+   **Ruled out:** <hypotheses eliminated, and what eliminated them>
+
+   **Observed at:** <short sha> on <branch>"
+   ```
+
+   - Promote the issue's root cause to `CONFIRMED` **only** when a hypothesis
+     reached that verdict with evidence. This status is `/fix-issue`'s entry
+     condition — writing it on a theory defeats the gate.
+   - If every hypothesis was INCONCLUSIVE, say so on the issue and record the
+     ruled-out list anyway. Knowing where the cause is *not* is a real result and
+     it stops the next session repeating the dead ends.
+   - If the bug is not tracked yet, use `/document-bug` to create the issue first.
+
+7. **Do NOT implement the fix** — present the diagnosis and let the user decide.
 
 ## Critical Rules
 
@@ -73,7 +97,10 @@ Investigate a bug systematically by gathering evidence, forming multiple hypothe
 
 ## Notes
 
-- This skill is investigation-only — it does not modify source files
+- This skill is investigation-only — it does not modify source files. Writing the
+  verdict to the issue is not a source change and is not optional
 - Use Task agents for parallel investigation when hypotheses are independent
 - If all hypotheses are inconclusive, say so and suggest additional diagnostic steps
 - Use `/document-bug` to log findings in Linear if the bug isn't already tracked
+- This skill is the only transition from an `UNCONFIRMED` root cause to a
+  `CONFIRMED` one. `/fix-issue` will not fix a bug that has not been through it

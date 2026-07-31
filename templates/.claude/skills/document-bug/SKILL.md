@@ -24,10 +24,27 @@ Record a bug as a Linear issue (labeled `bug`) without modifying any source file
 
 2. Gather bug details. If `$ARGUMENTS` is provided, use it as the symptom description. Then determine:
    - **Symptom:** What's happening? (from arguments or observation)
+   - **Expected:** What should happen instead — or `UNKNOWN`
    - **Evidence:** Log output, error messages, file:line references
-   - **Suspected root cause:** What you THINK is wrong (with reasoning)
+   - **Root cause:** `UNCONFIRMED` plus your theory, or `CONFIRMED` plus the file:line
    - **Affected module:** Which file(s) are involved
    - **Priority:** 1 (Urgent) / 2 (High) / 3 (Medium) / 4 (Low)
+
+   Record the code state the bug was seen on — `/fix-issue` uses it to detect
+   evidence that has gone stale:
+   ```bash
+   git rev-parse --short HEAD && git branch --show-current
+   ```
+
+   **Default the root cause to `UNCONFIRMED`.** Write `CONFIRMED` only if you
+   reproduced the failure and located the cause at a specific file:line in this
+   session. A theory that fits the evidence is still `UNCONFIRMED`. `/fix-issue`
+   refuses to fix an `UNCONFIRMED` cause, which is what stops the next session
+   fixing a guess.
+
+   **Leaving `Expected` as `UNKNOWN` is fine and often correct** — whoever hits a
+   bug sees what broke, not what the contract was. `/fix-issue` establishes it
+   with the user before writing any test. Do not invent it here.
 
 3. Create the issue in Linear with the `bug` and `discovered-in-session` labels:
    ```bash
@@ -35,11 +52,15 @@ Record a bug as a Linear issue (labeled `bug`) without modifying any source file
      -t "<Short bug title>" \
      -d "**Symptom:** <symptom>
 
+   **Expected:** <what should happen instead, or 'UNKNOWN — establish at fix time'>
+
    **Evidence:** <log lines, error messages with file:line>
 
-   **Suspected Root Cause:** <theory with reasoning>
+   **Root Cause:** UNCONFIRMED — theory: <theory with reasoning>
 
    **Affected Module:** <file(s)>
+
+   **Observed at:** <short sha> on <branch>
 
    **Fix Approach:** <suggested fix — to be attempted in a separate session>
 
@@ -58,8 +79,12 @@ Record a bug as a Linear issue (labeled `bug`) without modifying any source file
    Documented: ENG-456 — [description]
    Priority: [priority]
    Labels: bug, discovered-in-session
+   Root cause: UNCONFIRMED / CONFIRMED
+   Expected behaviour: [stated / UNKNOWN]
 
-   NO source files were modified. Fix this in a dedicated session using /fix-issue ENG-456.
+   NO source files were modified.
+   [If UNCONFIRMED] Next: /diagnose to confirm the cause, then /fix-issue ENG-456.
+   [If CONFIRMED]   Next: /fix-issue ENG-456 in a dedicated session.
    ```
 
 ## Critical Constraint
@@ -69,6 +94,11 @@ Record a bug as a Linear issue (labeled `bug`) without modifying any source file
 ## Notes
 
 - Include actual log evidence in the description, not paraphrased summaries
+- This skill is the cheap interrupt path — it exists so you can log and get back to
+  work. Do not turn it into an investigation. Confirming the cause is `/diagnose`;
+  agreeing what the code should do is `/fix-issue`
+- Every field you fill in is read by a later session as though it were fact, so an
+  honest `UNKNOWN` or `UNCONFIRMED` is worth more than a confident guess
 - If the bug was found during refactoring, note which refactoring task surfaced it
 - Default to the team configured in `.linear.toml` if available
 - The `discovered-in-session` label distinguishes bugs found by Claude from user-reported bugs
