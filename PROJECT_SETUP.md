@@ -199,7 +199,7 @@ Make the hook scripts executable: `chmod +x .claude/hooks/*.sh`
 
 **Optional — TDD enforcement with tdd-guard:**
 
-[tdd-guard](https://github.com/nizos/tdd-guard) provides automated TDD enforcement via Claude Code hooks. The hook entries are already pre-configured in `settings.local.json` — just install the package:
+[tdd-guard](https://github.com/nizos/tdd-guard) provides automated TDD enforcement via Claude Code hooks. The hook entries are pre-configured in `settings.local.json`, and `setup.sh` installs the support files into `.claude/tdd-guard/` (`data/instructions.md` and `reporters/generic-reporter.sh`, both of which you customize for your test framework). Install the package:
 
 ```bash
 npm install -g tdd-guard

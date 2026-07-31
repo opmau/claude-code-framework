@@ -1,0 +1,16 @@
+# Normalize all text to LF in the repository.
+#
+# Shell scripts MUST stay LF in the working tree on every platform: a CRLF
+# script fails under WSL and Linux bash with "bad interpreter: /bin/bash^M",
+# and CRLF makes shellcheck unusable (every line reports SC1017), which in
+# practice stops contributors from running the linter at all.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.md        text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.example   text eol=lf
+.gitignore  text eol=lf
+LICENSE     text eol=lf

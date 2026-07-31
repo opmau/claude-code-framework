@@ -37,7 +37,10 @@
 
 # To REPLACE the built-in list rather than extend it, set ALLOWED_FILES
 # directly. Most projects should use ALLOWED_FILES_EXTRA instead.
-#ALLOWED_FILES=""
+#
+# Setting either list to "" is honoured and means "match nothing" — it does not
+# fall back to the default. Comment the line out to get the default back.
+#ALLOWED_FILES="CLAUDE.md Makefile"
 
 
 # --- check-file-size.sh -----------------------------------------------------
@@ -45,17 +48,16 @@
 # Line-count limits. `bash bin/setup.sh <proj> --language <name>` writes these
 # for you; they are listed here so they survive framework updates.
 #
-#   python      300 / 300 / 300
-#   cpp         150 / 400 / 500   (framework default)
-#   typescript  100 / 300 / 400
-#   rust         400 / 400 / 400
-#   go           400 / 400 / 400
+#   python      header N/A  impl 300
+#   cpp         header 150  impl 400   (framework default)
+#   typescript  header 100  impl 300
+#   rust        header N/A  impl 400
+#   go          header N/A  impl 400
 #
 # HEADER_LIMIT applies to .h/.hpp/.d.ts/.types.ts; IMPL_LIMIT to everything
-# else. Defaults: 150 / 400 / 500
+# else. Defaults: 150 / 400
 #HEADER_LIMIT=150
 #IMPL_LIMIT=400
-#TOTAL_LIMIT=500
 
 # Lines per function before a complexity hint fires. Default: 40
 #FUNC_LIMIT=40
