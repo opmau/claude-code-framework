@@ -34,11 +34,17 @@ PROJECT_CONF="$HOOK_DIR/../project.conf"
 # left a value unset.
 HEADER_LIMIT="${HEADER_LIMIT:-150}"
 IMPL_LIMIT="${IMPL_LIMIT:-400}"
-TOTAL_LIMIT="${TOTAL_LIMIT:-500}"
 # ----------------------------------------------------------------------------
 
-LINE_COUNT=$(wc -l < "$FILE_PATH")
+# awk rather than `wc -l`: wc counts newlines, so it undercounts a final line
+# with no trailing newline, and BSD/macOS wc pads its output with spaces.
+LINE_COUNT=$(awk 'END{print NR}' "$FILE_PATH")
 FILENAME=$(basename "$FILE_PATH")
+
+# Messages accumulate here and are emitted as ONE JSON object at the end.
+# Emitting twice produces two concatenated top-level objects, which is invalid
+# JSON — jq's streaming parser accepts it, but conformant parsers reject it.
+MESSAGES=""
 
 # Determine limit based on file type
 LIMIT=$IMPL_LIMIT
@@ -52,10 +58,7 @@ esac
 
 if [ "$LINE_COUNT" -gt "$LIMIT" ]; then
   OVER=$((LINE_COUNT - LIMIT))
-  # Output warning as additional context (Claude will see this). Built with jq
-  # so backslashes and quotes in the filename are escaped correctly.
-  jq -n --arg ctx "WARNING: $FILENAME is now $LINE_COUNT lines ($OVER over the $LIMIT-line $TYPE limit). Consider splitting per CLAUDE.md Splitting Strategies." \
-    '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $ctx}}'
+  MESSAGES="WARNING: $FILENAME is now $LINE_COUNT lines ($OVER over the $LIMIT-line $TYPE limit). Consider splitting per CLAUDE.md Splitting Strategies."
 fi
 
 # --- COMPLEXITY HINTS (from complexity-budget rule) ---
@@ -63,39 +66,77 @@ fi
 # Override FUNC_LIMIT in .claude/project.conf, not here.
 FUNC_LIMIT="${FUNC_LIMIT:-40}"
 
+# A function ends where its body ends, NOT where the next one starts. Charging
+# the gap to the preceding function inflates the reported length with any
+# module-level code that follows it — constants, route tables, exported data.
+# Python closes on the first non-blank line indented no further than the `def`;
+# JS/TS closes on the line that returns brace depth to its opening level.
 LONG_FUNCS=""
 case "$FILENAME" in
   *.ts|*.js|*.tsx|*.jsx)
     LONG_FUNCS=$(awk -v limit="$FUNC_LIMIT" '
-      /^[[:space:]]*(export[[:space:]]+)?(async[[:space:]]+)?function[[:space:]]/ ||
-      /^[[:space:]]*(export[[:space:]]+)?(const|let)[[:space:]]+[a-zA-Z_]+[[:space:]]*=[[:space:]]*(async[[:space:]]*)?\(/ {
-        if (fname && (NR - start) > limit) printf "%s (%d lines), ", fname, (NR - start)
-        fname = ""; start = NR
-        if (match($0, /function[[:space:]]+([a-zA-Z_]+)/)) {
-          fname = substr($0, RSTART+9, RLENGTH-9); sub(/^[[:space:]]+/, "", fname)
-        } else if (match($0, /(const|let)[[:space:]]+([a-zA-Z_]+)/)) {
-          s = substr($0, RSTART, RLENGTH); sub(/^(const|let)[[:space:]]+/, "", s); fname = s
+      function flush(endline,   len) {
+        if (fname == "") return
+        len = endline - start + 1
+        if (len > limit) out = out (out ? ", " : "") fname " (" len " lines)"
+        fname = ""
+      }
+      {
+        if (fname != "") {
+          n = gsub(/{/, "{"); m = gsub(/}/, "}")
+          depth += n - m
+          if (seen_brace && depth <= base_depth) flush(NR)
+          else if (n > 0) seen_brace = 1
         }
       }
-      END { if (fname && (NR - start) > limit) printf "%s (%d lines)", fname, (NR - start) }
+      fname == "" && (/^[[:space:]]*(export[[:space:]]+)?(async[[:space:]]+)?function[[:space:]]/ ||
+                      /^[[:space:]]*(export[[:space:]]+)?(const|let|var)[[:space:]]+[A-Za-z_$][A-Za-z0-9_$]*[[:space:]]*=[[:space:]]*(async[[:space:]]*)?(\(|function)/) {
+        start = NR; seen_brace = 0; base_depth = 0; depth = 0
+        n = gsub(/{/, "{"); m = gsub(/}/, "}")
+        depth = n - m
+        if (n > 0) seen_brace = 1
+        if (match($0, /function[[:space:]]+[A-Za-z_$][A-Za-z0-9_$]*/)) {
+          fname = substr($0, RSTART, RLENGTH); sub(/^function[[:space:]]+/, "", fname)
+        } else if (match($0, /(const|let|var)[[:space:]]+[A-Za-z_$][A-Za-z0-9_$]*/)) {
+          fname = substr($0, RSTART, RLENGTH); sub(/^(const|let|var)[[:space:]]+/, "", fname)
+        } else fname = "(anonymous)"
+        if (seen_brace && depth <= 0) flush(NR)
+      }
+      END { flush(NR); print out }
     ' "$FILE_PATH" 2>/dev/null)
     ;;
   *.py)
     LONG_FUNCS=$(awk -v limit="$FUNC_LIMIT" '
-      /^[[:space:]]*(async[[:space:]]+)?def[[:space:]]+/ {
-        if (fname && (NR - start) > limit) printf "%s (%d lines), ", fname, (NR - start)
-        fname = ""; start = NR
-        if (match($0, /def[[:space:]]+([a-zA-Z_]+)/)) {
-          fname = substr($0, RSTART+4, RLENGTH-4); sub(/^[[:space:]]+/, "", fname)
+      function indent_of(line,   t) { t = line; sub(/[^ \t].*$/, "", t); gsub(/\t/, "        ", t); return length(t) }
+      function flush(endline,   len) {
+        if (fname == "") return
+        len = endline - start + 1
+        if (len > limit) out = out (out ? ", " : "") fname " (" len " lines)"
+        fname = ""
+      }
+      {
+        # Close the open function before considering this line as a new one.
+        if (fname != "" && $0 ~ /[^[:space:]]/ && indent_of($0) <= base_indent) flush(last_code)
+        if ($0 ~ /[^[:space:]]/) last_code = NR
+      }
+      fname == "" && /^[[:space:]]*(async[[:space:]]+)?def[[:space:]]+/ {
+        start = NR; base_indent = indent_of($0)
+        if (match($0, /def[[:space:]]+[A-Za-z_][A-Za-z0-9_]*/)) {
+          fname = substr($0, RSTART, RLENGTH); sub(/^def[[:space:]]+/, "", fname)
         }
       }
-      END { if (fname && (NR - start) > limit) printf "%s (%d lines)", fname, (NR - start) }
+      END { flush(last_code); print out }
     ' "$FILE_PATH" 2>/dev/null)
     ;;
 esac
 
 if [ -n "$LONG_FUNCS" ]; then
-  jq -n --arg ctx "COMPLEXITY HINT: Functions exceeding ${FUNC_LIMIT}-line budget in $FILENAME: $LONG_FUNCS. Consider extracting helpers per complexity-budget rule." \
+  MESSAGES="${MESSAGES:+$MESSAGES }COMPLEXITY HINT: Functions exceeding ${FUNC_LIMIT}-line budget in $FILENAME: $LONG_FUNCS. Consider extracting helpers per complexity-budget rule."
+fi
+
+# Single emit — see the MESSAGES comment above.
+if [ -n "$MESSAGES" ]; then
+  jq -n --arg ctx "$MESSAGES" \
     '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $ctx}}'
 fi
 

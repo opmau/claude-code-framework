@@ -6,7 +6,9 @@
 # run in the current session. Does NOT block — provides context so Claude
 # can self-correct by running build/test before committing.
 #
-# CUSTOMIZE: Adjust BUILD_CMD and TEST_CMD for your project.
+# Evidence is the freshness of the .claude-build-ok / .claude-test-ok marker
+# files, which /build and /test touch on success. Nothing here is
+# project-specific, so there is nothing to customize.
 # ============================================================================
 
 INPUT=$(cat)
@@ -21,14 +23,6 @@ fi
 if echo "$COMMAND" | grep -q "\-\-amend\|merge"; then
   exit 0
 fi
-
-# --- CUSTOMIZE THESE FOR YOUR PROJECT ---
-# Set to your project's build and test commands
-BUILD_CMD="cmake --build"
-TEST_CMD="ctest\|pytest\|npm test\|cargo test\|go test"
-# Path to track session state (uses temp directory)
-SESSION_FILE="/tmp/.claude-session-checks-$$"
-# ----------------------------------------
 
 # Check if build was run in recent commands (look for build artifacts or markers)
 # This is a heuristic check — it warns but doesn't block

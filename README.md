@@ -57,7 +57,9 @@ cp -r claude-code-framework/templates/docs your-project/docs
 mv your-project/.claude/project.conf.example your-project/.claude/project.conf
 ```
 
-**Prerequisites (for hooks):** bash 4+, `jq`. On Windows, use Git Bash or WSL. See [Platform Notes](PROJECT_SETUP.md#platform-notes).
+**Prerequisites (for hooks):** bash, `jq`. On Windows, use Git Bash or WSL. See [Platform Notes](PROJECT_SETUP.md#platform-notes).
+
+`jq` is required, not optional — the hooks parse their input and build their output with it, and without it they exit silently having enforced nothing. `setup.sh` refuses to install hooks if `jq` is missing; pass `--no-hooks` to install everything else.
 
 **Updating an existing project:**
 
@@ -109,6 +111,10 @@ bash claude-code-framework/bin/update.sh /path/to/your-project --dry-run
 
 # Apply updates
 bash claude-code-framework/bin/update.sh /path/to/your-project
+
+# Also delete files that no longer exist in the templates (off by default,
+# because it removes skills/rules/agents your project wrote too)
+bash claude-code-framework/bin/update.sh /path/to/your-project --prune
 ```
 
 The update script overwrites **framework files only** (skills, rules, hooks, agents) and never touches your project-specific files (`CLAUDE.md`, `docs/`, `.linear.toml`, `.claude/project.conf`).
@@ -120,6 +126,7 @@ Project-owned files are protected:
 | `.claude/project.conf` | Never touched. This is where you customize the framework. |
 | `.claude/settings.local.json` | Installed if missing; once you edit it, left alone (it holds your hook wiring and permissions). |
 | `.claudeignore` | Same — installed if missing, preserved once edited. |
+| `.claude/tickets/`, `.claude/tdd-guard/` | Seeded on first install, then yours. `ticket-list.md` accumulates real state and the tdd-guard reporter is meant to be customized, so neither is refreshed. |
 | Skills/rules/hooks/agents you wrote yourself | Kept and reported as `[extra]`. Pass `--prune` to delete anything absent from the templates. |
 
 When a preserved file has upstream changes you want, the script prints the `diff` command to review them.
@@ -292,17 +299,20 @@ at runtime and fall back to the framework defaults for anything left unset, so
 the framework itself stays generic while each project overrides what it needs.
 
 ```bash
-# Source lives in pdf2frate/, not src/
-ALLOWED_DIRS="pdf2frate/ tests/ docs/ .claude/"
+# This project's source lives in lib/ and cmd/, not src/
+ALLOWED_DIRS="lib/ cmd/ tests/ docs/ .claude/"
 
 # Extend the built-in always-editable file list rather than replacing it
-ALLOWED_FILES_EXTRA="requirements.txt"
+ALLOWED_FILES_EXTRA="requirements.txt Dockerfile"
 
-# Python calibration
+# Python calibration (or run: setup.sh <project> --language python)
 HEADER_LIMIT=300
 IMPL_LIMIT=300
-TOTAL_LIMIT=300
 ```
+
+Every setting is optional and falls back to the framework default. Setting a
+list to `""` means "match nothing" — comment the line out to restore the
+default instead.
 
 Editing the hook scripts directly does not survive an update — the updater
 copies them over wholesale. `project.conf` is the supported seam.

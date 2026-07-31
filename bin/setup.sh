@@ -110,6 +110,22 @@ if [ ! -d "$TEMPLATE_DIR" ]; then
   exit 1
 fi
 
+# jq is a hard dependency of the hooks: they parse tool input with it and build
+# their JSON output with it. Without jq the hooks exit 0 having done nothing, so
+# the framework appears installed while enforcing none of its rules. Fail loudly
+# here rather than silently no-op on every edit forever after.
+if [ "$INSTALL_HOOKS" = true ] && ! command -v jq >/dev/null 2>&1; then
+  echo -e "${RED}ERROR: jq is required by the hooks and was not found on PATH.${NC}"
+  echo "  Without it the hooks silently do nothing."
+  echo ""
+  echo "  macOS:         brew install jq"
+  echo "  Debian/Ubuntu: sudo apt install jq"
+  echo "  Windows:       download jq.exe and put it on PATH (see PROJECT_SETUP.md)"
+  echo ""
+  echo "  Or re-run with --no-hooks to install everything else."
+  exit 1
+fi
+
 # Resolve to absolute path
 TARGET_DIR="$(cd "$TARGET_DIR" 2>/dev/null && pwd || echo "$TARGET_DIR")"
 
@@ -167,8 +183,12 @@ install_project_conf() {
   echo -e "  ${GREEN}[created]${NC} $dst"
 }
 
-# Set KEY=VALUE in a project.conf, replacing the line whether it is currently
-# commented out (the shipped default) or already active. Appends if absent.
+# Set KEY=VALUE in a project.conf. Replaces the shipped commented-out default,
+# or appends if the key is absent entirely.
+#
+# A key the project has ALREADY set is left alone unless --force: project.conf
+# is project-owned, and silently rewriting a deliberate value would undo the
+# customization this file exists to protect.
 set_conf_value() {
   local file="$1"
   local key="$2"
@@ -178,8 +198,14 @@ set_conf_value() {
     return
   fi
 
+  if grep -q "^[[:space:]]*${key}=" "$file" && [ "$FORCE" = false ]; then
+    echo -e "  ${YELLOW}[skip]${NC}  ${key} already set in project.conf — use --force to recalibrate"
+    return
+  fi
+
   if grep -q "^[[:space:]]*#\{0,1\}[[:space:]]*${key}=" "$file"; then
-    inplace_sed "s|^[[:space:]]*#\{0,1\}[[:space:]]*${key}=.*|${key}=${value}|" "$file"
+    # 0,/re/ so only the FIRST occurrence is rewritten.
+    inplace_sed "1,/^[[:space:]]*#\{0,1\}[[:space:]]*${key}=/s|^[[:space:]]*#\{0,1\}[[:space:]]*${key}=.*|${key}=${value}|" "$file"
   else
     printf '%s=%s\n' "$key" "$value" >> "$file"
   fi
@@ -202,13 +228,15 @@ apply_language_calibration() {
   # separate header/interface files; we still set the hook constant equal
   # to the impl limit so any extension that *would* match (none for these
   # langs) gets the impl limit. The table value is the human-facing one.
-  local h_hook i_hook t_hook h_table i_table t_table label
+  # t_table is the CLAUDE.md "Total per module" row, which /check-sizes reads;
+  # there is no corresponding hook constant.
+  local h_hook i_hook h_table i_table t_table label
   case "$lang" in
-    python)     h_hook=300; i_hook=300; t_hook=300; h_table="N/A"; i_table=300; t_table=300; label="Python";;
-    cpp)        h_hook=150; i_hook=400; t_hook=500; h_table=150;   i_table=400; t_table=500; label="C/C++";;
-    typescript) h_hook=100; i_hook=300; t_hook=400; h_table=100;   i_table=300; t_table=400; label="TypeScript";;
-    rust)       h_hook=400; i_hook=400; t_hook=400; h_table="N/A"; i_table=400; t_table=400; label="Rust";;
-    go)         h_hook=400; i_hook=400; t_hook=400; h_table="N/A"; i_table=400; t_table=400; label="Go";;
+    python)     h_hook=300; i_hook=300; h_table="N/A"; i_table=300; t_table=300; label="Python";;
+    cpp)        h_hook=150; i_hook=400; h_table=150;   i_table=400; t_table=500; label="C/C++";;
+    typescript) h_hook=100; i_hook=300; h_table=100;   i_table=300; t_table=400; label="TypeScript";;
+    rust)       h_hook=400; i_hook=400; h_table="N/A"; i_table=400; t_table=400; label="Rust";;
+    go)         h_hook=400; i_hook=400; h_table="N/A"; i_table=400; t_table=400; label="Go";;
     *) return ;;
   esac
 
@@ -217,18 +245,20 @@ apply_language_calibration() {
   [ -f "$conf" ] || install_project_conf "$target"
   set_conf_value "$conf" HEADER_LIMIT "$h_hook"
   set_conf_value "$conf" IMPL_LIMIT   "$i_hook"
-  set_conf_value "$conf" TOTAL_LIMIT  "$t_hook"
 
-  # 2. Patch the CLAUDE.md File Size Limits table placeholders.
-  #    The template uses [150], [400], [500] as bracketed placeholders.
-  #    Use | as the s-command delimiter so values containing / (e.g. N/A) are safe.
+  # 2. Patch the CLAUDE.md File Size Limits table.
+  #    Matched by ROW LABEL rather than by the pristine [150]/[400]/[500]
+  #    placeholders: those are consumed by the first calibration, so a
+  #    placeholder-based substitution silently no-ops on every later run.
+  #    Anchoring to the row keeps --language re-runnable.
+  #    # is the s-command delimiter so values containing / (e.g. N/A) are safe.
   if [ -f "$claude_md" ]; then
-    inplace_sed "s|\[150\] lines|$h_table lines|g" "$claude_md"
-    inplace_sed "s|\[400\] lines|$i_table lines|g" "$claude_md"
-    inplace_sed "s|\[500\] lines|$t_table lines|g" "$claude_md"
+    inplace_sed "s#^\(| Header / interface files *|\)[^|]*#\1 $h_table lines #" "$claude_md"
+    inplace_sed "s#^\(| Implementation files *|\)[^|]*#\1 $i_table lines #" "$claude_md"
+    inplace_sed "s#^\(| Total per module[^|]*|\)[^|]*#\1 $t_table lines #" "$claude_md"
   fi
 
-  echo -e "  ${GREEN}[calibrated]${NC} $label — project.conf + CLAUDE.md File Size Limits set (header/$h_table, impl/$i_table, total/$t_table)"
+  echo -e "  ${GREEN}[calibrated]${NC} $label — CLAUDE.md File Size Limits set to header/$h_table, impl/$i_table, total/$t_table (any [skip] above means project.conf kept your value)"
 }
 
 copy_dir() {
@@ -240,7 +270,10 @@ copy_dir() {
   fi
 
   find "$src_dir" -type f | while read -r src_file; do
-    local rel_path="${src_file#$src_dir/}"
+    # The pattern operand must be quoted: unquoted, glob metacharacters in the
+    # path (notably [ and ]) are parsed as a character class and the prefix
+    # strip silently no-ops, scattering copies into an absolute-path tree.
+    local rel_path="${src_file#"$src_dir"/}"
     copy_file "$src_file" "$dst_dir/$rel_path"
   done
 }
@@ -281,6 +314,10 @@ fi
 if [ "$INSTALL_SKILLS" = true ]; then
   echo -e "${GREEN}[3/7] Skills${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
+  # The /create-ticket skill reads and writes .claude/tickets/. Installing the
+  # skill without its backing directory leaves it failing at step one, which
+  # matters for projects that do not use Linear.
+  copy_dir "$TEMPLATE_DIR/.claude/tickets" "$TARGET_DIR/.claude/tickets"
 else
   echo -e "${YELLOW}[3/7] Skills — skipped${NC}"
 fi
@@ -297,6 +334,13 @@ if [ "$INSTALL_HOOKS" = true ]; then
   copy_file "$TEMPLATE_DIR/.claude/settings.local.json" "$TARGET_DIR/.claude/settings.local.json"
   # Project-local hook configuration (never overwritten by setup or update)
   install_project_conf "$TARGET_DIR"
+  # tdd-guard support files. settings.local.json wires four tdd-guard hook
+  # entries, and the reporter is what turns a test run into the JSON they
+  # consume — shipping the wiring without these leaves the feature unusable.
+  copy_dir "$TEMPLATE_DIR/.claude/tdd-guard" "$TARGET_DIR/.claude/tdd-guard"
+  if [ "$DRY_RUN" = false ] && [ -d "$TARGET_DIR/.claude/tdd-guard/reporters" ]; then
+    find "$TARGET_DIR/.claude/tdd-guard/reporters" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+  fi
 else
   echo -e "${YELLOW}[4/7] Hooks — skipped${NC}"
 fi

@@ -158,6 +158,25 @@ preserve_file() {
   bump kept
 }
 
+# --- Helper: seed a directory once, then leave it to the project ---
+# For trees the framework provides as a starting point but the project then
+# owns: tdd-guard's reporter and instructions are explicitly meant to be
+# customized, and tickets/ticket-list.md accumulates real project state.
+# Refreshing these on update would discard the user's work.
+preserve_dir() {
+  local src_dir="$1"
+  local dst_dir="$2"
+
+  if [ ! -d "$src_dir" ]; then
+    return
+  fi
+
+  while IFS= read -r src_file; do
+    local rel_path="${src_file#"$src_dir"/}"
+    preserve_file "$src_file" "$dst_dir/$rel_path"
+  done < <(find "$src_dir" -type f | sort)
+}
+
 # --- Helper: update all files in a directory ---
 update_dir() {
   local src_dir="$1"
@@ -168,7 +187,10 @@ update_dir() {
   fi
 
   while IFS= read -r src_file; do
-    local rel_path="${src_file#$src_dir/}"
+    # The pattern operand must be quoted: unquoted, glob metacharacters in the
+    # path (notably [ and ]) are parsed as a character class and the prefix
+    # strip silently no-ops, leaving rel_path absolute.
+    local rel_path="${src_file#"$src_dir"/}"
     update_file "$src_file" "$dst_dir/$rel_path"
   done < <(find "$src_dir" -type f | sort)
 }
@@ -186,7 +208,16 @@ cleanup_dir() {
   fi
 
   while IFS= read -r dst_file; do
-    local rel_path="${dst_file#$dst_dir/}"
+    local rel_path="${dst_file#"$dst_dir"/}"
+
+    # Belt and braces: if the prefix strip failed for any reason, rel_path is
+    # still absolute and every lookup below would miss, which under --prune
+    # would delete the entire install. Deleting is wrong by construction here.
+    if [ "$rel_path" = "$dst_file" ]; then
+      echo -e "  ${YELLOW}[warn]${NC}   could not resolve $dst_file relative to $dst_dir — skipping"
+      continue
+    fi
+
     local src_file="$src_dir/$rel_path"
     if [ ! -f "$src_file" ]; then
       if [ "$PRUNE" = true ]; then
@@ -220,30 +251,48 @@ echo ""
 
 # --- Update framework files ---
 
-echo -e "${GREEN}[1/6] Skills${NC}"
+echo -e "${GREEN}[1/8] Skills${NC}"
 update_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
 cleanup_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
 
-echo -e "${GREEN}[2/6] Rules${NC}"
+echo -e "${GREEN}[2/8] Rules${NC}"
 update_dir "$TEMPLATE_DIR/.claude/rules" "$TARGET_DIR/.claude/rules"
 cleanup_dir "$TEMPLATE_DIR/.claude/rules" "$TARGET_DIR/.claude/rules"
 
-echo -e "${GREEN}[3/6] Hooks${NC}"
+echo -e "${GREEN}[3/8] Hooks${NC}"
 update_dir "$TEMPLATE_DIR/.claude/hooks" "$TARGET_DIR/.claude/hooks"
 cleanup_dir "$TEMPLATE_DIR/.claude/hooks" "$TARGET_DIR/.claude/hooks"
 if [ "$DRY_RUN" = false ]; then
   find "$TARGET_DIR/.claude/hooks" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
 fi
 
-echo -e "${GREEN}[4/6] Agents${NC}"
+echo -e "${GREEN}[4/8] Agents${NC}"
 update_dir "$TEMPLATE_DIR/.claude/agents" "$TARGET_DIR/.claude/agents"
 cleanup_dir "$TEMPLATE_DIR/.claude/agents" "$TARGET_DIR/.claude/agents"
 
-echo -e "${GREEN}[5/6] Settings${NC}"
+echo -e "${GREEN}[5/8] Settings${NC}"
 preserve_file "$TEMPLATE_DIR/.claude/settings.local.json" "$TARGET_DIR/.claude/settings.local.json"
 
-echo -e "${GREEN}[6/6] .claudeignore${NC}"
+echo -e "${GREEN}[6/8] .claudeignore${NC}"
 preserve_file "$TEMPLATE_DIR/.claudeignore" "$TARGET_DIR/.claudeignore"
+
+# --- Project config ---
+# Projects installed before project.conf existed get the commented template so
+# the new hooks have something to read and the settings are discoverable.
+# preserve_file only writes when absent, so an existing config is never touched.
+echo -e "${GREEN}[7/8] Project config${NC}"
+preserve_file "$TEMPLATE_DIR/.claude/project.conf.example" "$TARGET_DIR/.claude/project.conf"
+
+# --- Seed-once trees ---
+# Seeded on first install, then owned by the project. tickets/ticket-list.md
+# accumulates real state, and the tdd-guard reporter and instructions are
+# explicitly meant to be customized — refreshing either would discard work.
+echo -e "${GREEN}[8/8] Seed-once trees (tickets, tdd-guard)${NC}"
+preserve_dir "$TEMPLATE_DIR/.claude/tickets" "$TARGET_DIR/.claude/tickets"
+preserve_dir "$TEMPLATE_DIR/.claude/tdd-guard" "$TARGET_DIR/.claude/tdd-guard"
+if [ "$DRY_RUN" = false ] && [ -d "$TARGET_DIR/.claude/tdd-guard/reporters" ]; then
+  find "$TARGET_DIR/.claude/tdd-guard/reporters" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+fi
 
 # --- Skipped files ---
 echo ""
@@ -251,7 +300,6 @@ echo -e "${YELLOW}Skipped (project-specific):${NC}"
 echo "  CLAUDE.md"
 echo "  docs/CURRENT_SPRINT.md"
 echo "  docs/LINEAR_SNAPSHOT.md"
-echo "  .claude/project.conf"
 
 # --- Summary ---
 read -r UPDATED ADDED UNCHANGED REMOVED KEPT < "$COUNTER_FILE"
