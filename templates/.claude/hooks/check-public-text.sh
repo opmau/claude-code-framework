@@ -145,6 +145,30 @@ SESSION NARRATIVE:
 $TELL_HITS"
 fi
 
+# --- Signpost wording --------------------------------------------------------
+# Some phrasing announces sensitive material regardless of what is staged — an
+# amend, a PR body or a release note carries it just as far as a commit does.
+#
+# Two ways to match, both deliberately narrow, because "fix memory leak" and
+# "sanitize user input" are ordinary messages that must stay silent:
+#   1. Phrases that are almost never innocent in public text.
+#   2. A removal verb AND a sensitive noun in the same message.
+SIGNPOST_ALWAYS='\<redact(s|ed|ing)?\>|\<wallet address(es)?\>|\<private key(s)?\>|\<api (token|key)s?\>|\<live (trading|account) data\>|\<real account data\>'
+REMOVAL_VERB='\<(remove[sd]?|removing|delete[sd]?|deleting|strip(s|ped|ping)?|scrub(s|bed|bing)?|purge[sd]?|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing))\>'
+SENSITIVE_NOUN='\<(live trading|real account|account data|private data|personal data|customer data|credential(s)?|secret(s)?|position size(s)?|balance(s)?|equity|passwords?)\>'
+
+SIGNPOST=$(echo "$MSG" | grep -ioE "$SIGNPOST_ALWAYS" | sort -u | head -3 | tr '\n' '; ')
+if echo "$MSG" | grep -qiE "$REMOVAL_VERB" && echo "$MSG" | grep -qiE "$SENSITIVE_NOUN"; then
+  SIGNPOST="$SIGNPOST$(echo "$MSG" | grep -ioE "$SENSITIVE_NOUN" | sort -u | head -3 | tr '\n' '; ')"
+fi
+if [ -n "$(printf '%s' "$SIGNPOST" | tr -d '; ')" ]; then
+  FINDINGS="$FINDINGS
+SIGNPOST WORDING: $SIGNPOST
+  Naming sensitive material points a reader at it, whether or not this change
+  removes it. State what changed in form and stop -- \"tidy comments\", \"use
+  illustrative fixture values\"."
+fi
+
 # --- Scrub cross-check -------------------------------------------------------
 # A change that REMOVES private data must not name what it removed.
 #
