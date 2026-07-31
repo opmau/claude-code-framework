@@ -8,9 +8,9 @@ A complete set of templates for configuring Claude Code as a **rigorous engineer
 
 - **CLAUDE.md template** — Project rules, architecture constraints, agent behavior rules with auto-generated section markers
 - **Skills** — 20 slash commands: 15 core (`/build`, `/test`, `/review`, `/check-sizes`, `/retro`, `/commit`, `/create-pr`, `/create-ticket`, `/create-skill`, `/document-bug`, `/session-mode`, `/diagnose`, `/fix-issue`, `/smoke-test`) + 5 Linear integration (`/linear-sync`, `/linear-create`, `/linear-triage`, `/linear-sprint`, `/linear-update`)
-- **Hooks** — 5 automated enforcement hooks + optional [tdd-guard](https://github.com/nizos/tdd-guard) TDD enforcement (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
-- **Rules** — 10 modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, anti-patterns, canary strategy, trust levels, complexity budget)
-- **Agents** — 5 specialized subagents with persistent memory (code reviewer, planner, QA tester, domain expert, Linear PM)
+- **Hooks** — 6 automated enforcement hooks + optional [tdd-guard](https://github.com/nizos/tdd-guard) TDD enforcement (file size limits, scope warnings, pre-commit verification, rule persistence through context compression)
+- **Rules** — 11 modular, path-scoped rule files (anti-sycophancy, scope guardrails, feedback loops, anti-patterns, canary strategy, trust levels, complexity budget, public-facing writing)
+- **Agents** — 6 specialized subagents with persistent memory (code reviewer, docs reviewer, planner, QA tester, domain expert, Linear PM)
 - **Ticket system** — Persistent task tracking across sessions with structured templates
 - **Issue tracking** — Linear as single source of truth with local snapshot cache (`docs/LINEAR_SNAPSHOT.md`)
 - **Setup tooling** — Automated setup and update scripts, comment stripping for production, `.claudeignore` template
@@ -31,6 +31,9 @@ Every rule in this framework exists because of a specific failure mode observed 
 | Diagnosis rules | Speculative fixes applied without evidence, masking root causes or introducing new failures |
 | Session modes | Behavioral constraints stated early in a session are forgotten as context grows |
 | Pre-commit hook | Code committed without build or test verification, shipping broken artifacts |
+| Public-writing rule | Public text drafted from the agent's session reads as a narrative of its own work, and leaks private data into artifacts that cannot be un-published |
+| Public-text hook | Real values and identifiers reach commit messages and release notes, where a forward fix cannot remove them |
+| Docs reviewer | The author cannot see session narrative in their own text — they have the context that makes it feel earned |
 
 ## Quick Start
 
@@ -168,6 +171,7 @@ templates/
     │   ├── check-file-size.sh          # Warns when files exceed size limits
     │   ├── check-scope.sh              # Warns when editing out-of-scope files + session mode
     │   ├── pre-commit-check.sh         # Warns when committing without build/test
+    │   ├── check-public-text.sh        # Scans text about to be published for private data
     │   ├── inject-critical-rules.sh    # Preserves rules through context compression
     │   └── session-check.sh            # Periodic feedback loop reminder
     │   # + tdd-guard hooks (optional, pre-configured in settings.local.json)
@@ -184,9 +188,11 @@ templates/
     │   ├── anti-patterns.md            # Explicit "don't do this" registry
     │   ├── canary-strategy.md          # De-risk cross-cutting changes
     │   ├── trust-levels.md             # Progressive autonomy by module risk
-    │   └── complexity-budget.md        # Code health thresholds
+    │   ├── complexity-budget.md        # Code health thresholds
+    │   └── public-writing.md           # Voice and private-data rules for public artifacts
     ├── agents/
     │   ├── code-reviewer.md            # Pre-commit reviewer with memory
+    │   ├── docs-reviewer.md            # Cold reviewer for public-facing text
     │   ├── planner.md                  # Task planning and breakdown
     │   ├── qa-tester.md                # Test writing and QA
     │   ├── domain-expert.md            # Domain specialist with memory
@@ -234,6 +240,8 @@ Rules aren't just documented — they're enforced automatically:
 - **PostToolUse** hook checks file size after every edit
 - **PreToolUse** hook warns about out-of-scope changes and enforces session mode constraints
 - **PreToolUse** hook warns when committing without running build/tests
+- **PreToolUse** hook scans text about to be published — commit messages, PR
+  bodies, release notes, staged docs — for private data and session narrative
 - **PreCompact** hook re-injects critical rules (including diagnosis rules) before context compression
 - **Stop** hook periodically reminds about documentation updates
 - **Optional:** [tdd-guard](https://github.com/nizos/tdd-guard) hooks enforce TDD discipline automatically — blocks implementation code without failing tests, supports mid-session toggle (`tdd-guard on` / `tdd-guard off`). Pre-configured in `settings.local.json`; install with `npm install -g tdd-guard`
@@ -254,11 +262,32 @@ Built-in slash commands for clean git workflows:
 - `/smoke-test` skill analyzes integration test logs, diagnoses failures against source code, and batch-creates issues
 - Integration test results feed into the structured bug workflow (`/document-bug` → `/fix-issue`)
 
+### Public-Facing Writing
+
+Agents draft commit messages, PR bodies and release notes from their own working
+session, because that is what is salient to them. The result reads as a narrative
+of the agent's work rather than a description of the change, and it is how real
+values and identifiers end up in artifacts that cannot be un-published.
+
+A rule alone does not fix this — it governs what not to write, while the problem
+is what the text is drafted *from*. The framework addresses it with three
+mechanisms:
+
+- **`rules/public-writing.md`** — defines the reader (a technical lead
+  integrating the project) and the three questions every sentence must serve
+- **`hooks/check-public-text.sh`** — scans commit messages, PR bodies, release
+  notes and staged docs before the publishing command runs
+- **`docs-reviewer` agent** — reviews the text with **no session context**, so
+  anything that only makes sense to someone who watched the work reads as
+  unmotivated
+
 ### Specialized Agents
 
-Five agents with persistent memory for different roles:
+Six agents with persistent memory for different roles:
 
 - **code-reviewer** — pre-commit review against CLAUDE.md rules (Opus)
+- **docs-reviewer** — cold review of public-facing text, given only the artifact
+  and the diff (Opus)
 - **planner** — breaks down complex tasks before implementation (Opus)
 - **qa-tester** — writes tests, validates coverage, investigates failures (Opus)
 - **domain-expert** — deep expertise for domain-specific debugging (Opus) — supports splitting into multiple domain experts
