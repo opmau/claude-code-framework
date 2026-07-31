@@ -67,6 +67,7 @@ declare -a TEST_ERRORS=()
 # cargo:     "test test_name ... ok" / "test test_name ... FAILED"
 # C++ (test_framework.h): "[TEST] name... OK" / "[TEST] name... FAILED: ..."
 
+# shellcheck disable=SC2034  # `line` is used by the parsing you add below.
 while IFS= read -r line; do
     # --- Replace these patterns with your framework's output format ---
 
@@ -133,7 +134,7 @@ fi
             printf '          "errors": []\n'
         fi
 
-        if [ $i -lt $(( ${#TEST_NAMES[@]} - 1 )) ]; then
+        if [ "$i" -lt $(( ${#TEST_NAMES[@]} - 1 )) ]; then
             printf '        },\n'
         else
             printf '        }\n'
