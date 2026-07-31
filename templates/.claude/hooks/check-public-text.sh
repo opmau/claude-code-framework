@@ -51,10 +51,18 @@ PRIVATE="${PUBLIC_TEXT_PRIVATE:-$DEFAULT_PRIVATE}"
 ALLOW_FIGURES="${PUBLIC_TEXT_ALLOW_FIGURES:-0}"
 
 # --- Collect the text about to be published ---------------------------------
-TEXT=""
-
 # Inline bodies and messages, plus any heredoc the command carries.
-TEXT="$COMMAND"
+#
+# Strip the parts of the command line that are NOT published content, or the
+# scan reports the caller's own working directory on every commit:
+#   - `cd <path>` prefixes
+#   - the PATH argument to --body-file/-F (its CONTENTS are read separately)
+#   - -C/--git-dir path arguments
+# A hook that warns on every invocation stops being read, so precision here
+# matters more than catching a leak that happens to sit inside a `cd`.
+TEXT=$(printf '%s' "$COMMAND" \
+  | sed -E 's/(^|[;&|]) *cd +("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ;&|]+)/\1/g' \
+  | sed -E 's/(--body-file|-F|-C|--git-dir)[ =]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ]+)/\1/g')
 
 # --body-file / -F <path> — the common path for long bodies.
 BODY_FILE=$(echo "$COMMAND" | grep -oE '(--body-file|-F)[ =]+[^ ]+' | head -1 | sed -E 's/^(--body-file|-F)[ =]+//' | tr -d '"'"'"'')
