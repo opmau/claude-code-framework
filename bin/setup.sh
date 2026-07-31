@@ -314,6 +314,10 @@ fi
 if [ "$INSTALL_SKILLS" = true ]; then
   echo -e "${GREEN}[3/7] Skills${NC}"
   copy_dir "$TEMPLATE_DIR/.claude/skills" "$TARGET_DIR/.claude/skills"
+  # The /create-ticket skill reads and writes .claude/tickets/. Installing the
+  # skill without its backing directory leaves it failing at step one, which
+  # matters for projects that do not use Linear.
+  copy_dir "$TEMPLATE_DIR/.claude/tickets" "$TARGET_DIR/.claude/tickets"
 else
   echo -e "${YELLOW}[3/7] Skills — skipped${NC}"
 fi
@@ -330,6 +334,13 @@ if [ "$INSTALL_HOOKS" = true ]; then
   copy_file "$TEMPLATE_DIR/.claude/settings.local.json" "$TARGET_DIR/.claude/settings.local.json"
   # Project-local hook configuration (never overwritten by setup or update)
   install_project_conf "$TARGET_DIR"
+  # tdd-guard support files. settings.local.json wires four tdd-guard hook
+  # entries, and the reporter is what turns a test run into the JSON they
+  # consume — shipping the wiring without these leaves the feature unusable.
+  copy_dir "$TEMPLATE_DIR/.claude/tdd-guard" "$TARGET_DIR/.claude/tdd-guard"
+  if [ "$DRY_RUN" = false ] && [ -d "$TARGET_DIR/.claude/tdd-guard/reporters" ]; then
+    find "$TARGET_DIR/.claude/tdd-guard/reporters" -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true
+  fi
 else
   echo -e "${YELLOW}[4/7] Hooks — skipped${NC}"
 fi

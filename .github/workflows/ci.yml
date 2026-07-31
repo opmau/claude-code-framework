@@ -19,7 +19,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
 
       - name: Lint all shell scripts
-        run: shellcheck --shell=bash bin/*.sh templates/.claude/hooks/*.sh
+        # The hooks and the tdd-guard reporter ship into every downstream
+        # project, so they are linted at the same severity as the installers.
+        run: shellcheck --shell=bash bin/*.sh templates/.claude/hooks/*.sh templates/.claude/tdd-guard/reporters/*.sh
 
   smoke:
     name: setup + update smoke test
@@ -35,8 +37,17 @@ jobs:
           set -euo pipefail
           proj="$(mktemp -d)/demo"
           bash bin/setup.sh "$proj" --language python
-          test -f "$proj/.claude/project.conf"
-          test -f "$proj/.claude/hooks/check-scope.sh"
+          # Everything the docs promise must actually arrive. /create-ticket and
+          # the tdd-guard hook wiring are both useless without their backing files.
+          for f in CLAUDE.md .claudeignore \
+                   .claude/project.conf \
+                   .claude/hooks/check-scope.sh \
+                   .claude/tickets/ticket-list.md \
+                   .claude/tickets/TICKET-000-template.md \
+                   .claude/tdd-guard/data/instructions.md \
+                   .claude/tdd-guard/reporters/generic-reporter.sh; do
+            test -f "$proj/$f" || { echo "MISSING after setup: $f"; exit 1; }
+          done
           grep -q '^IMPL_LIMIT=300' "$proj/.claude/project.conf"
           echo "PROJ=$proj" >> "$GITHUB_ENV"
 

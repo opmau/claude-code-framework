@@ -126,6 +126,7 @@ Project-owned files are protected:
 | `.claude/project.conf` | Never touched. This is where you customize the framework. |
 | `.claude/settings.local.json` | Installed if missing; once you edit it, left alone (it holds your hook wiring and permissions). |
 | `.claudeignore` | Same — installed if missing, preserved once edited. |
+| `.claude/tickets/`, `.claude/tdd-guard/` | Seeded on first install, then yours. `ticket-list.md` accumulates real state and the tdd-guard reporter is meant to be customized, so neither is refreshed. |
 | Skills/rules/hooks/agents you wrote yourself | Kept and reported as `[extra]`. Pass `--prune` to delete anything absent from the templates. |
 
 When a preserved file has upstream changes you want, the script prints the `diff` command to review them.
