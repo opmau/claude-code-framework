@@ -3,7 +3,7 @@ name: fix-issue
 description: Pick a bug from Linear, reproduce it, agree the acceptance criteria, then fix it test-first and update the issue. Use when the user says "fix issue", "fix bug", "work on known issue", or "pick a bug".
 argument-hint: "<ENG-NNN or description>"
 user-invocable: true
-allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task, AskUserQuestion
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Task
 model: opus
 ---
 
@@ -13,12 +13,11 @@ Select a bug from Linear, confirm it is real and understood, agree what correct
 behaviour is, then fix it test-first and update the issue.
 
 This skill follows a **test-driven** approach: RED → GREEN → REFACTOR, behind two
-gates that must pass before any fix is planned.
+gates that run before any fix is planned.
 
-> **A Linear issue is a lead, not a specification.** It was written by a session
-> that is gone and cannot be questioned. It tells you where to look. It does not
-> tell you what is true, and it does not tell you what the code is *supposed* to
-> do. Both are established here, with the user, before RED.
+> **A tracked issue is a lead, not a specification.** It tells you where to look.
+> It does not tell you what is true, or what the code is supposed to do — both are
+> established here, with the user, before RED.
 
 > **Automated enforcement:** If [tdd-guard](https://github.com/nizos/tdd-guard) is installed, the TDD cycle is enforced automatically via hooks — implementation code is blocked unless corresponding failing tests exist. Toggle mid-session with `tdd-guard on` / `tdd-guard off`.
 
@@ -46,59 +45,49 @@ gates that must pass before any fix is planned.
 
 ### GATE 1 — A confirmed root cause
 
-3. **Check the entry condition.** Read the issue's `Root Cause:` field:
+3. **Check the entry condition** — the issue's `Root Cause:` field:
 
-   - **`CONFIRMED`** — proceed to Gate 2.
-   - **`UNCONFIRMED`, missing, or phrased as a theory** — STOP. Run the
-     `/diagnose` protocol now (use Task agents for independent hypotheses), and
-     post the verdict to the issue as `/diagnose` step 6 describes. Only then
-     continue.
+   - `CONFIRMED` → proceed to Gate 2.
+   - `UNCONFIRMED`, missing, or phrased as a theory → STOP. Run the `/diagnose`
+     protocol (Task agents for independent hypotheses) and post the verdict to the
+     issue as `/diagnose` step 6 describes. Only then continue.
 
-   **Do not fix a suspicion.** A theory that fits the evidence is not a cause, and
-   an issue that merely sounds confident is not evidence. This is a hard block.
+   **Do not fix a suspicion.** A theory that fits the evidence is not a cause.
 
-4. **Check whether the evidence has gone stale.** Read the issue's `Observed at:`
-   commit, then see whether the affected code has moved since:
+4. **Check whether the evidence is stale.** If the affected code has moved since
+   the issue's `Observed at:` commit, re-verify every claim at Gate 2 rather than
+   reasoning from the description. An absent field means re-verify by default.
 
    ```bash
    git log --oneline <observed-sha>..HEAD -- <affected files>
    ```
 
-   If it has, treat every claim in the issue as suspect and re-verify at Gate 2
-   rather than reasoning from the description. If the field is absent, the issue
-   predates this workflow — re-verify by default.
-
 ### GATE 2 — Reproduce the failure
 
-5. **Reproduce the bug and observe it failing.** Run the command, script, or test
-   that exhibits the symptom, and read the actual output.
+5. **Reproduce the bug and watch it fail.** Run the command, script or test that
+   exhibits the symptom, and read the actual output.
 
-   Reading the issue and judging its evidence "still valid" is **not**
-   reproduction. Reproduction means you ran something and watched it fail. Only an
-   executable check can tell you a bug is still real — bugs get fixed
-   incidentally, and issues go stale.
+   Judging the issue's recorded evidence "still valid" is **not** reproduction —
+   only an executable check tells you the bug is still real. Bugs get fixed
+   incidentally; issues go stale.
 
-   **If you cannot reproduce it, STOP.** Do not plan a fix. Comment on the issue
-   with what you tried and what you observed instead, and ask the user how to
-   proceed. This is a hard block: proceeding means changing code on the strength of
-   a description alone.
+   **If you cannot reproduce it, STOP.** Comment on the issue with what you tried
+   and what you saw instead, and ask the user. Proceeding would mean changing code
+   on the strength of a description alone.
 
-   The user may explicitly direct you to proceed without reproduction (some bugs
-   are environment- or timing-dependent). If so, record that decision and its
-   reason on the issue, and say so in the final report.
+   The user may explicitly waive this for a bug that cannot be reproduced locally.
+   Record the waiver and its reason on the issue, and repeat it in the final report.
 
 ### Establish the contract
 
 6. **Agree what the code is meant to do.** The RED test asserts *expected correct
    behaviour* — this is where that is established, not inferred.
 
-   - Ask the user the questions the investigation raised — the ones the code
-     cannot answer. Ask them **now**, after Gates 1 and 2, not before: questions
-     asked before reading the code are generic and waste a turn.
-   - Where intended behaviour is ambiguous, you must ask. Do not guess and do not
-     read intent off the buggy code — the buggy code is the thing in question.
-   - If the issue's `Expected:` field says `UNKNOWN`, that is the norm, not a
-     defect in the report. Establish it here.
+   Ask the questions the investigation raised — the ones the code cannot answer —
+   and ask them **now**, after both gates. Questions asked before reading the code
+   are generic. Where intended behaviour is ambiguous you must ask: the buggy code
+   cannot tell you what it was meant to do, and an `Expected: UNKNOWN` field is the
+   norm rather than a defect in the report.
 
    Present the contract and get explicit approval before writing any test:
 
@@ -121,21 +110,13 @@ gates that must pass before any fix is planned.
    RED test. "Handles errors properly" is not a criterion; "returns -1 and logs
    the symbol when the asset is unknown" is.
 
-7. **Post the agreed contract to the issue** — it is the only durable record of
-   what "fixed" was agreed to mean:
+7. **Post the approved contract to the issue** — the only durable record of what
+   "fixed" was agreed to mean:
 
    ```bash
    linear issue comment add ENG-123 -b "**Agreed contract**
 
-   **Expected:** <expected behaviour>
-
-   **Acceptance criteria:**
-   1. <criterion>
-   2. <criterion>
-
-   **Out of scope:** <exclusions>
-
-   **Manual verification:** <how the user will confirm>"
+   <the approved block from step 6>"
    ```
 
 8. **Plan the fix:**
@@ -147,10 +128,9 @@ gates that must pass before any fix is planned.
 ### RED — Write a failing test
 
 9. **Turn the acceptance criteria into a failing test:**
-   - **Each acceptance criterion from step 6 becomes one assertion.** The test
-     asserts the agreed correct behaviour, so it fails against the current buggy
-     code. The criteria are the specification; the test is that specification made
-     executable
+   - **Each acceptance criterion from step 6 becomes one assertion** — the criteria
+     are the specification, the test is that specification made executable. It
+     fails against the current buggy code
    - Place the test in the appropriate test file following the project's existing test conventions
    - Name the test descriptively: `test_<what_should_happen>` or `it("should <expected behavior>")`
    - Run the test and **confirm it fails**:
@@ -260,16 +240,7 @@ gates that must pass before any fix is planned.
 - Only fix ONE issue per invocation — single-responsibility
 - If the fix touches more than 3 files, stop and discuss scope with the user
 - If you discover a new bug during the fix, use /document-bug to log it separately
-- **Both gates are hard blocks.** An unconfirmed cause and an unreproduced failure
-  each stop the skill. Neither is satisfied by re-reading the issue and judging it
-  sound — Gate 1 needs a verdict from `/diagnose`, Gate 2 needs an observed failure
-- **The user can waive Gate 2 explicitly**, for a bug that genuinely cannot be
-  reproduced locally. Record the waiver and its reason on the issue. Never waive a
-  gate on your own initiative, and never treat a plausible-sounding issue
-  description as a substitute
-- **Ask rather than infer what correct behaviour is.** The buggy code cannot tell
-  you what it was meant to do, and neither can a bug report written by a session
-  that has ended. Getting this wrong ships a confidently-tested wrong answer
+- **Never waive a gate on your own initiative** — only the user can, and only Gate 2
 - **Always write the test BEFORE writing the fix** — never skip the RED phase
 - The test must fail before the fix and pass after — this proves the fix actually addresses the bug
 - If you cannot write a meaningful automated test (e.g., UI-only issue, environment-specific), explain why and ask the user how to proceed
