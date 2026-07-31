@@ -16,6 +16,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/pre-commit-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-public-text.sh"
           }
         ]
       },

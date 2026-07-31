@@ -61,3 +61,29 @@
 
 # Lines per function before a complexity hint fires. Default: 40
 #FUNC_LIMIT=40
+
+
+# --- check-public-text.sh ---------------------------------------------------
+
+# Scans text about to become public (commit messages, PR bodies, release notes,
+# staged docs) for private data and for session-narrative phrasing.
+# See .claude/rules/public-writing.md for the standard it enforces.
+
+# Set to 1 if this project's public docs legitimately quote precise measured
+# numbers -- published benchmarks, datasets, protocol constants. Off by default,
+# because the common case is an agent pasting a real value read from a live
+# system. Default: 0
+#PUBLIC_TEXT_ALLOW_FIGURES=0
+
+# Extra regex alternatives (ERE) APPENDED to the built-in private-data pattern,
+# which already covers home directories, .env, SSH keys and 40-hex addresses.
+# Add anything project-specific that must never appear in public text.
+#PUBLIC_TEXT_PRIVATE_EXTRA="internal\.example\.com|acme-secret-svc"
+
+# Extra phrases APPENDED to the built-in session-narrative list.
+#PUBLIC_TEXT_TELLS_EXTRA="per the retro|as discussed in standup"
+
+# To REPLACE either built-in list rather than extend it, set PUBLIC_TEXT_PRIVATE
+# or PUBLIC_TEXT_TELLS directly. Most projects should use the _EXTRA forms.
+#PUBLIC_TEXT_PRIVATE=""
+#PUBLIC_TEXT_TELLS=""

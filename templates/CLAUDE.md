@@ -838,6 +838,7 @@ These hooks enforce rules automatically — Claude doesn't need to remember them
 | `PostToolUse` (Edit/Write) | Warns if file exceeds size limits | `.claude/hooks/check-file-size.sh` |
 | `PreToolUse` (Edit/Write) | Warns if editing out-of-scope files; enforces session mode constraints | `.claude/hooks/check-scope.sh` |
 | `PreToolUse` (Bash) | Warns if committing without running build/tests | `.claude/hooks/pre-commit-check.sh` |
+| `PreToolUse` (Bash) | Scans commit messages, PR bodies, release notes and staged public docs for private data and session narrative | `.claude/hooks/check-public-text.sh` |
 | `PreCompact` | Re-injects critical rules before context compression | `.claude/hooks/inject-critical-rules.sh` |
 | `Stop` | Periodic reminder to check for doc updates | `.claude/hooks/session-check.sh` |
 | `PreToolUse` (Write/Edit) | TDD enforcement — blocks impl without failing tests (optional, requires [tdd-guard](https://github.com/nizos/tdd-guard)) | `tdd-guard` |
@@ -854,6 +855,7 @@ Rules files in `.claude/rules/` are auto-loaded every session:
 | File | Scope | What It Covers |
 |------|-------|---------------|
 | `agent-behavior.md` | All files | Anti-sycophancy, evidence rule, diagnosis rules, max fix attempts |
+| `public-writing.md` | All files | What may appear in text a stranger reads: commits, PRs, release notes, docs, comments |
 | `scope-guardrails.md` | All files | Single-responsibility, pre-change checklist |
 | `file-size-limits.md` | `src/**`, `tests/**` | Size limits and splitting strategies |
 | `testing-protocol.md` | `src/**`, `tests/**` | Test mapping, bug handling |
@@ -874,6 +876,7 @@ Custom subagents for specialized tasks:
 | Agent | Model | Memory | When to Use |
 |-------|-------|--------|-------------|
 | `code-reviewer` | Opus | Project | Before commits — reviews against CLAUDE.md |
+| `docs-reviewer` | Opus | Project | Before every commit, PR and release — reviews public-facing text with no session context |
 | `planner` | Opus | Project | Before multi-step features, refactors, or architecture changes |
 | `qa-tester` | Opus | Project | Writing tests, validating coverage, investigating failures |
 | `[domain]-expert` | Opus | Project | After 2 failed fix attempts on [domain] issues |
@@ -1028,11 +1031,13 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   ├── check-file-size.sh          # PostToolUse: size limit check (set limits in project.conf)
 │   │   ├── check-scope.sh              # PreToolUse: scope warning + session mode (via project.conf)
 │   │   ├── pre-commit-check.sh         # PreToolUse: build/test verification
+│   │   ├── check-public-text.sh        # PreToolUse: private data + session narrative scan
 │   │   ├── inject-critical-rules.sh    # PreCompact: rule survival
 │   │   └── session-check.sh            # Stop: feedback loop nudge
 │   ├── tdd-guard/                      # TDD enforcement data (optional, auto-managed by tdd-guard)
 │   ├── rules/
 │   │   ├── agent-behavior.md           # Anti-sycophancy, evidence rules
+│   │   ├── public-writing.md           # What may appear in text a stranger reads
 │   │   ├── scope-guardrails.md         # Change scope limits
 │   │   ├── file-size-limits.md         # Size limits (path-scoped)
 │   │   ├── testing-protocol.md         # Test mapping (path-scoped)
@@ -1044,6 +1049,7 @@ Use these phrases when you WANT Claude to challenge you:
 │   │   └── trust-levels.md             # Progressive autonomy by area
 │   ├── agents/
 │   │   ├── code-reviewer.md            # Pre-commit review (Opus)
+│   │   ├── docs-reviewer.md            # Cold review of public text (Opus)
 │   │   ├── planner.md                  # Task planning (Opus)
 │   │   ├── qa-tester.md                # Test writing and QA (Opus)
 │   │   ├── [domain]-expert.md          # Domain specialist (Opus)

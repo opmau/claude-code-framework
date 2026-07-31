@@ -12,7 +12,7 @@ This guide ensures every new project starts with:
 - Skills (slash commands) for common workflows (`/build`, `/test`, `/review`, `/commit`, `/create-pr`, etc.)
 - Hooks for automated rule enforcement
 - Modular rules for path-scoped constraints
-- Agents with persistent memory (code-reviewer, planner, qa-tester, domain-expert)
+- Agents with persistent memory (code-reviewer, docs-reviewer, planner, qa-tester, domain-expert)
 - Ticket system for persistent task tracking across sessions
 - `.claudeignore` for context window optimization
 - Claude Code that understands and respects the framework
@@ -230,6 +230,10 @@ Read .claude/agents/ and customize:
 3. qa-tester.md — Replace [Project Name], update test conventions
 4. domain-expert.md — Rename to [your-domain]-expert.md, fill in
    domain-specific topics and reference material
+5. docs-reviewer.md — Usable as shipped. Give it the artifact text and the
+   diff only, never the session transcript; that is what makes it work.
+   Project-specific private-data patterns go in .claude/project.conf
+   (PUBLIC_TEXT_PRIVATE_EXTRA), not in the agent.
 
 Keep the memory: project setting on all agents — this lets them learn over time.
 
