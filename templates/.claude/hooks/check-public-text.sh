@@ -60,16 +60,36 @@ ALLOW_FIGURES="${PUBLIC_TEXT_ALLOW_FIGURES:-0}"
 #   - -C/--git-dir path arguments
 # A hook that warns on every invocation stops being read, so precision here
 # matters more than catching a leak that happens to sit inside a `cd`.
-TEXT=$(printf '%s' "$COMMAND" \
-  | sed -E 's/(^|[;&|]) *cd +("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ;&|]+)/\1/g' \
-  | sed -E 's/(--body-file|-F|-C|--git-dir)[ =]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ]+)/\1/g')
+# Prefer the AUTHORED text: the value of -m/--message/-b/--body, plus any
+# heredoc the command carries. Scanning the whole command line instead means
+# branch names, paths and flags get scanned as if they were prose, which
+# produces false warnings and trains the reader to ignore this hook.
+MSG=$(printf '%s' "$COMMAND" | grep -oE "(-m|--message|-b|--body)[ =]+(\"[^\"]*\"|'[^']*')" \
+      | sed -E "s/^(-m|--message|-b|--body)[ =]+//" | sed -E "s/^[\"']//; s/[\"']$//")
+
+# Heredoc payload, e.g.  git commit -F- <<'EOF' ... EOF
+HEREDOC=$(printf '%s' "$COMMAND" | sed -n "/<<-\?['\"]\?[A-Za-z_]\+['\"]\?/,\$p" | tail -n +2)
+[ -n "$HEREDOC" ] && MSG="$MSG
+$HEREDOC"
+
+# Fallback: no recognisable authored text, so scan the command with the parts
+# that are definitely not content removed (cd targets, path arguments).
+if [ -z "$(printf '%s' "$MSG" | tr -d '[:space:]')" ]; then
+  MSG=$(printf '%s' "$COMMAND" \
+    | sed -E 's/(^|[;&|]) *cd +("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ;&|]+)/\1/g' \
+    | sed -E 's/(--body-file|-F|-C|--git-dir)[ =]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^ ]+)/\1/g')
+fi
 
 # --body-file / -F <path> — the common path for long bodies.
 BODY_FILE=$(echo "$COMMAND" | grep -oE '(--body-file|-F)[ =]+[^ ]+' | head -1 | sed -E 's/^(--body-file|-F)[ =]+//' | tr -d '"'"'"'')
 if [ -n "$BODY_FILE" ] && [ "$BODY_FILE" != "-" ] && [ -f "$BODY_FILE" ]; then
-  TEXT="$TEXT
+  MSG="$MSG
 $(cat "$BODY_FILE" 2>/dev/null)"
 fi
+
+# MSG is the authored text alone. TEXT adds staged content and is what the
+# general scans below run over; the scrub cross-check needs MSG on its own.
+TEXT="$MSG"
 
 # Staged changes to files a stranger reads, on commit.
 #
@@ -123,6 +143,43 @@ if [ -n "$TELL_HITS" ]; then
   FINDINGS="$FINDINGS
 SESSION NARRATIVE:
 $TELL_HITS"
+fi
+
+# --- Scrub cross-check -------------------------------------------------------
+# A change that REMOVES private data must not name what it removed.
+#
+# Read it as an attacker would: the diff is public the moment it is pushed, so a
+# message saying what was taken out is a signpost telling them which parent to
+# inspect and what they will find. "Tidy comments" is a complete message for
+# this kind of change. It needs no inventory, no example and no rationale.
+if echo "$COMMAND" | grep -q 'git commit'; then
+  REMOVED=$(git diff --cached -U0 2>/dev/null | grep '^-' | grep -v '^---')
+  if [ -n "$REMOVED" ] && echo "$REMOVED" | grep -qE "$PRIVATE|[0-9]{1,3}(,[0-9]{3})+|[0-9]+\.[0-9]{4,}"; then
+
+    # Distinctive tokens present in BOTH the removed lines and the message.
+    SHARED=$(echo "$REMOVED" | grep -oE '[A-Za-z_][A-Za-z0-9_]{7,}|[0-9]{4,}' \
+      | sort -u | while read -r tok; do
+          case "$tok" in ''|*[!0-9A-Za-z_]*) continue;; esac
+          echo "$MSG" | grep -qF -- "$tok" && echo "$tok"
+        done | head -6 | tr '\n' ' ')
+
+    # Language that announces the change as a removal of sensitive material.
+    ANNOUNCE=$(echo "$MSG" | grep -ioE '\<remove[sd]? (live|real|private|sensitive|account|trading)[a-z ]*|\<scrub(s|bed|bing)?\>|\<sanitiz(e|es|ed|ing)\>|\<sanitis(e|es|ed|ing)\>|\<redact(s|ed|ing)?\>|\<leak(s|ed|ing|age)?\>|\<private (data|key|path|strategy)\>|\<live (trading|account) data\>' | sort -u | head -4 | tr '\n' '; ')
+
+    if [ -n "$SHARED" ] || [ -n "$ANNOUNCE" ]; then
+      FINDINGS="$FINDINGS
+SCRUB THAT ANNOUNCES ITSELF:
+  This diff removes private-looking content, and the message points at it."
+      [ -n "$SHARED" ]   && FINDINGS="$FINDINGS
+  named in both the message and the removed lines: $SHARED"
+      [ -n "$ANNOUNCE" ] && FINDINGS="$FINDINGS
+  removal-announcing wording: $ANNOUNCE"
+      FINDINGS="$FINDINGS
+  The diff is public once pushed. Naming what was removed tells a reader which
+  parent to inspect and what to look for. Say only what changed in form --
+  \"tidy comments\", \"use illustrative fixture values\" -- and stop there."
+    fi
+  fi
 fi
 
 [ -z "$FINDINGS" ] && exit 0
