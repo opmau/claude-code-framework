@@ -42,13 +42,43 @@ TELLS="${PUBLIC_TEXT_TELLS:-$DEFAULT_TELLS}"
 [ -n "${PUBLIC_TEXT_TELLS_EXTRA:-}" ] && TELLS="$TELLS|$PUBLIC_TEXT_TELLS_EXTRA"
 
 # Paths and identifiers that should never reach a public artifact.
-DEFAULT_PRIVATE='[A-Za-z]:\\\\Users\\\\|/home/[a-z]|/Users/[a-z]|OneDrive|\.env\b|id_rsa|0x[a-fA-F0-9]{40}'
+# Windows paths match with one or two backslashes: the hook reads the command
+# after JSON decoding, where prose carries C:\Users\..., but text that is
+# itself escaped (heredoc'd JSON, code in a doc) carries C:\\Users\\...
+DEFAULT_PRIVATE='[A-Za-z]:\\{1,2}Users\\{1,2}|/home/[a-z]|/Users/[a-z]|OneDrive|\.env\b|id_rsa|0x[a-fA-F0-9]{40}'
 PRIVATE="${PUBLIC_TEXT_PRIVATE:-$DEFAULT_PRIVATE}"
 [ -n "${PUBLIC_TEXT_PRIVATE_EXTRA:-}" ] && PRIVATE="$PRIVATE|$PUBLIC_TEXT_PRIVATE_EXTRA"
 
 # Set to 1 in project.conf for projects whose public docs legitimately quote
 # precise measured numbers (benchmarks, published datasets).
 ALLOW_FIGURES="${PUBLIC_TEXT_ALLOW_FIGURES:-0}"
+
+# Word lists for the signpost and scrub checks below. The defaults are
+# domain-neutral on purpose: a template shared across projects should not
+# carry any one project's vocabulary, which downstream projects would inherit
+# as noise. A project extends them in project.conf with the _EXTRA forms.
+
+# Phrases that are almost never innocent in public text, whatever is staged.
+DEFAULT_SIGNPOST='\<redact(s|ed|ing)?\>|\<private key(s)?\>|\<api (token|key)s?\>|\<hardcoded (secret|password|credential)s?\>'
+SIGNPOST_ALWAYS="${PUBLIC_TEXT_SIGNPOST:-$DEFAULT_SIGNPOST}"
+[ -n "${PUBLIC_TEXT_SIGNPOST_EXTRA:-}" ] && SIGNPOST_ALWAYS="$SIGNPOST_ALWAYS|$PUBLIC_TEXT_SIGNPOST_EXTRA"
+
+# Nouns that make a sentence a signpost when paired with a removal verb.
+DEFAULT_NOUNS='\<(credential(s)?|secret(s)?|passwords?|private data|personal data|customer data|account data|api (key|token)s?|access token(s)?|private key(s)?|connection string(s)?)\>'
+SENSITIVE_NOUN="${PUBLIC_TEXT_NOUNS:-$DEFAULT_NOUNS}"
+[ -n "${PUBLIC_TEXT_NOUNS_EXTRA:-}" ] && SENSITIVE_NOUN="$SENSITIVE_NOUN|$PUBLIC_TEXT_NOUNS_EXTRA"
+
+# Wording that announces a change as the removal of sensitive material. Only
+# consulted when the diff really does remove private-looking content, so terms
+# that are ordinary elsewhere ("sanitize user input") are safe to list here.
+DEFAULT_ANNOUNCE='\<remove[sd]? (private|sensitive|internal|confidential|personal|customer)[a-z ]*|\<scrub(s|bed|bing)?\>|\<sanitiz(e|es|ed|ing)\>|\<sanitis(e|es|ed|ing)\>|\<redact(s|ed|ing)?\>|\<leak(s|ed|ing|age)?\>|\<private (data|key|path)\>'
+ANNOUNCE_RE="${PUBLIC_TEXT_ANNOUNCE:-$DEFAULT_ANNOUNCE}"
+[ -n "${PUBLIC_TEXT_ANNOUNCE_EXTRA:-}" ] && ANNOUNCE_RE="$ANNOUNCE_RE|$PUBLIC_TEXT_ANNOUNCE_EXTRA"
+
+# Removal verbs are plain English rather than domain vocabulary, so they are
+# fixed. "Replace" and "rename" are here because a scrub is as often described
+# by what went in as by what came out.
+REMOVAL_VERB='\<(remove[sd]?|removing|delete[sd]?|deleting|strip(s|ped|ping)?|scrub(s|bed|bing)?|purge[sd]?|replace[sd]?|replacing|rename[sd]?|renaming|swap(s|ped|ping)?|mask(s|ed|ing)?|anonymi[sz](e|es|ed|ing)|obfuscat(e|es|ed|ing)|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing))\>'
 
 # --- Collect the text about to be published ---------------------------------
 # Inline bodies and messages, plus any heredoc the command carries.
@@ -93,13 +123,24 @@ TEXT="$MSG"
 
 # Staged changes to files a stranger reads, on commit.
 #
+# This hook runs BEFORE the command does, so anything the command itself stages
+# is not in the index yet — for the common chained `git add ... && git commit`,
+# `git diff --cached` shows the previous staging state, usually nothing. When
+# the command stages as part of committing (a `git add`, or commit -a/--all),
+# diff against HEAD instead: it covers the index and the working tree together,
+# which is what the commit is about to contain.
+DIFF_BASE="--cached"
+if echo "$COMMAND" | grep -qE '(^|[;&|] *| )git add |git commit( --?[A-Za-z][A-Za-z-]*)*( -[a-z]*a[a-z]*| --all)( |$)'; then
+  DIFF_BASE="HEAD"
+fi
+
 # Framework internals under .claude/ are excluded: a file that documents this
 # standard necessarily quotes the phrasings it warns about, and would flag
 # itself. Any other file can opt out by containing the marker
 # "public-text-check: ignore" — use it for style guides and linter fixtures,
 # not to silence a genuine finding.
 if echo "$COMMAND" | grep -q 'git commit'; then
-  STAGED_DOCS=$(git diff --cached --name-only 2>/dev/null \
+  STAGED_DOCS=$(git diff "$DIFF_BASE" --name-only 2>/dev/null \
     | grep -Ei '(^|/)(CHANGELOG|README|CONTRIBUTING|SECURITY)|^docs/|\.md$' \
     | grep -Ev '(^|/)\.claude/' \
     | head -20)
@@ -107,7 +148,7 @@ if echo "$COMMAND" | grep -q 'git commit'; then
     [ -f "$f" ] || continue
     grep -q 'public-text-check: ignore' "$f" 2>/dev/null && continue
     TEXT="$TEXT
-$(git diff --cached -U0 -- "$f" 2>/dev/null | grep '^+' | sed 's/^+//')"
+$(git diff "$DIFF_BASE" -U0 -- "$f" 2>/dev/null | grep '^+' | sed 's/^+//')"
   done
 fi
 
@@ -153,10 +194,7 @@ fi
 # "sanitize user input" are ordinary messages that must stay silent:
 #   1. Phrases that are almost never innocent in public text.
 #   2. A removal verb AND a sensitive noun in the same message.
-SIGNPOST_ALWAYS='\<redact(s|ed|ing)?\>|\<wallet address(es)?\>|\<private key(s)?\>|\<api (token|key)s?\>|\<live (trading|account) data\>|\<real account data\>'
-REMOVAL_VERB='\<(remove[sd]?|removing|delete[sd]?|deleting|strip(s|ped|ping)?|scrub(s|bed|bing)?|purge[sd]?|sanitiz(e|es|ed|ing)|sanitis(e|es|ed|ing))\>'
-SENSITIVE_NOUN='\<(live trading|real account|account data|private data|personal data|customer data|credential(s)?|secret(s)?|position size(s)?|balance(s)?|equity|passwords?)\>'
-
+# The word lists are defined in the configuration section above.
 SIGNPOST=$(echo "$MSG" | grep -ioE "$SIGNPOST_ALWAYS" | sort -u | head -3 | tr '\n' '; ')
 if echo "$MSG" | grep -qiE "$REMOVAL_VERB" && echo "$MSG" | grep -qiE "$SENSITIVE_NOUN"; then
   SIGNPOST="$SIGNPOST$(echo "$MSG" | grep -ioE "$SENSITIVE_NOUN" | sort -u | head -3 | tr '\n' '; ')"
@@ -177,7 +215,7 @@ fi
 # inspect and what they will find. "Tidy comments" is a complete message for
 # this kind of change. It needs no inventory, no example and no rationale.
 if echo "$COMMAND" | grep -q 'git commit'; then
-  REMOVED=$(git diff --cached -U0 2>/dev/null | grep '^-' | grep -v '^---')
+  REMOVED=$(git diff "$DIFF_BASE" -U0 2>/dev/null | grep '^-' | grep -v '^---')
   if [ -n "$REMOVED" ] && echo "$REMOVED" | grep -qE "$PRIVATE|[0-9]{1,3}(,[0-9]{3})+|[0-9]+\.[0-9]{4,}"; then
 
     # Distinctive tokens present in BOTH the removed lines and the message.
@@ -188,7 +226,7 @@ if echo "$COMMAND" | grep -q 'git commit'; then
         done | head -6 | tr '\n' ' ')
 
     # Language that announces the change as a removal of sensitive material.
-    ANNOUNCE=$(echo "$MSG" | grep -ioE '\<remove[sd]? (live|real|private|sensitive|account|trading)[a-z ]*|\<scrub(s|bed|bing)?\>|\<sanitiz(e|es|ed|ing)\>|\<sanitis(e|es|ed|ing)\>|\<redact(s|ed|ing)?\>|\<leak(s|ed|ing|age)?\>|\<private (data|key|path|strategy)\>|\<live (trading|account) data\>' | sort -u | head -4 | tr '\n' '; ')
+    ANNOUNCE=$(echo "$MSG" | grep -ioE "$ANNOUNCE_RE" | sort -u | head -4 | tr '\n' '; ')
 
     if [ -n "$SHARED" ] || [ -n "$ANNOUNCE" ]; then
       FINDINGS="$FINDINGS
