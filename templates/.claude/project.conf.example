@@ -83,7 +83,22 @@
 # Extra phrases APPENDED to the built-in session-narrative list.
 #PUBLIC_TEXT_TELLS_EXTRA="per the retro|as discussed in standup"
 
-# To REPLACE either built-in list rather than extend it, set PUBLIC_TEXT_PRIVATE
-# or PUBLIC_TEXT_TELLS directly. Most projects should use the _EXTRA forms.
+# The signpost and scrub checks ship domain-neutral word lists (credentials,
+# secrets, passwords, tokens, keys, personal/customer data). Extend them with
+# this project's own sensitive vocabulary — ERE alternatives, appended:
+#
+#   _SIGNPOST_EXTRA  phrases that are never innocent in this project's public text
+#   _NOUNS_EXTRA     nouns that make a removal-verb sentence a signpost
+#   _ANNOUNCE_EXTRA  wording that announces a scrub of this project's data
+#                    (only consulted when the diff removes private-looking lines)
+#
+# Illustrative values for a healthcare project:
+#PUBLIC_TEXT_SIGNPOST_EXTRA="patient record(s)?|production database dump"
+#PUBLIC_TEXT_NOUNS_EXTRA="patient (record|data)s?|billing detail(s)?"
+#PUBLIC_TEXT_ANNOUNCE_EXTRA="\\<remove[sd]? (patient|billing)[a-z ]*"
+
+# To REPLACE a built-in list rather than extend it, set PUBLIC_TEXT_PRIVATE,
+# PUBLIC_TEXT_TELLS, PUBLIC_TEXT_SIGNPOST, PUBLIC_TEXT_NOUNS or
+# PUBLIC_TEXT_ANNOUNCE directly. Most projects should use the _EXTRA forms.
 #PUBLIC_TEXT_PRIVATE=""
 #PUBLIC_TEXT_TELLS=""

@@ -59,6 +59,28 @@ increase, depending on configuration" rather than a real figure. Fixtures and
 doc examples use illustrative values. Precise real figures belong in the
 conversation and the issue tracker, which are private.
 
+## A change that removes private data must not name what it removed
+
+Read every artifact as two people. The **integrator** asks what they must do.
+The **attacker** asks what this hands them. Most public text only gets read for
+the first, and gets written for neither.
+
+A commit that removes sensitive material is the clearest case. Its diff is
+public the moment it is pushed, so a message describing what was taken out is a
+signpost: it tells a reader which parent to inspect and what they will find
+there. The removal advertises the thing the removal was for.
+
+Say what changed in form and stop:
+
+- "tidy comments"
+- "use illustrative fixture values"
+- "simplify the changelog entries"
+
+That is a complete message. **It needs no inventory, no example, and no
+rationale** — and it is not evasive, because the reader who needs to act on this
+change does not need any of that. The same applies to the PR body and, if the
+change reaches one, the release note.
+
 ## Mechanisms
 
 These are what actually change the output.
@@ -78,3 +100,6 @@ These are what actually change the output.
 
 4. **Say what you verified, not that you verified.** "Checked and it's clean" is
    not a result. Show the check.
+
+5. **Default to less.** Most changes need one line. Length is not thoroughness;
+   an explanation nobody asked for is usually the author reasoning in public.
