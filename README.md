@@ -235,9 +235,13 @@ Lock sessions into specific operating modes to prevent drift:
 
 Complete lifecycle from discovery to fix:
 
-- `/document-bug` — log bugs as Linear issues without touching source code
-- `/diagnose` — structured differential diagnosis with multiple hypotheses
-- `/fix-issue` — pick a tracked bug, fix it, verify, update issue tracking
+- `/document-bug` — log bugs as Linear issues without touching source code, recording what was expected and whether the cause is confirmed
+- `/diagnose` — structured differential diagnosis with multiple hypotheses; records the confirmed root cause on the issue
+- `/fix-issue` — pick a tracked bug, reproduce it, agree the acceptance criteria, then fix it test-first and update issue tracking
+
+An issue carries its root cause as `UNCONFIRMED` or `CONFIRMED`. `/diagnose` is the
+only transition between them, and `/fix-issue` refuses to fix an unconfirmed cause
+or a failure it cannot reproduce — a tracked issue is a lead, not a specification.
 - `/smoke-test` — analyze integration test logs, classify failures by severity, batch-create issues
 
 ### Automated Enforcement via Hooks
