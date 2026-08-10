@@ -26,3 +26,11 @@ Explicit "don't do this" rules with context on why. Each entry documents a mista
 - **NEVER create a "utils" or "helpers" grab-bag module** — name modules by what they do, not by what they are. Utility modules grow unbounded.
 - **NEVER add a dependency for something achievable in <20 lines** — each dependency is a maintenance and security liability.
 - **NEVER bypass the dependency direction** — lower layers must not import from upper layers. Violating this creates circular dependencies that are painful to untangle.
+
+## Running and Observing External Processes
+
+Both of these fail *silently and misleadingly*: neither produces an error that
+points at the real cause, so the time lost goes into diagnosing the wrong thing.
+
+- **NEVER launch a long-running process with `start //wait` (Git Bash) or `Start-Process` (PowerShell)** — both return before the process exits, so the agent's background task is marked complete and the process is torn down with it. The symptom is a run that appears to die at a different point each time, with no crash in the system event log and no shutdown sequence in its own log. Run the executable attached inside a long-lived background task, so the task stays alive until the process exits.
+- **NEVER `tail -f` a log file while the process that writes it is running** — the reader holds the file open, the writer then fails to open its own log, and the run continues writing nothing. You end up diagnosing a **stale log from a previous run**. Read the log after the process exits. Stopping the monitor may also leave the `tail` orphaned and still holding the handle, so check for survivors before re-running.
